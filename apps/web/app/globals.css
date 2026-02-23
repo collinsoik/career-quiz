@@ -1,0 +1,115 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface-primary text-text-primary font-sans;
+  }
+
+  ::selection {
+    @apply bg-accent-primary/30;
+  }
+
+  /* Custom scrollbar for dark theme */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-surface-primary;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border-secondary rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-text-tertiary;
+  }
+}
+
+@layer components {
+  /* ── Cards ── */
+  .card {
+    @apply bg-surface-secondary border border-border-primary rounded-lg p-4 shadow-soft;
+  }
+
+  .card-elevated {
+    @apply bg-surface-secondary border border-border-primary rounded-xl p-6 shadow-elevated;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    @apply inline-flex items-center justify-center font-semibold text-sm px-6 py-2.5 rounded-lg transition-all duration-150 cursor-pointer;
+  }
+
+  .btn:active {
+    transform: scale(0.97);
+  }
+
+  .btn-primary {
+    @apply btn bg-accent-primary text-white hover:brightness-110;
+  }
+
+  .btn-primary:disabled {
+    @apply opacity-40 cursor-not-allowed;
+  }
+
+  .btn-green {
+    @apply btn bg-accent-green text-surface-primary font-bold hover:brightness-110;
+  }
+
+  .btn-red {
+    @apply btn bg-accent-red text-white hover:brightness-110;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-text-secondary border border-border-primary hover:bg-surface-tertiary hover:text-text-primary;
+  }
+
+  .btn-glow {
+    @apply btn bg-accent-primary text-white hover:brightness-110 shadow-glow animate-pulse-glow;
+  }
+
+  /* ── Inputs ── */
+  .input {
+    @apply w-full bg-surface-tertiary border border-border-primary rounded-lg px-4 py-2.5 text-base text-text-primary placeholder-text-disabled focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-accent-primary/20 transition-colors;
+  }
+
+  /* ── Badges ── */
+  .badge {
+    @apply inline-flex items-center font-medium text-xs px-2.5 py-1 rounded-full;
+  }
+
+  .badge-green {
+    @apply badge bg-accent-green-light text-accent-green;
+  }
+
+  .badge-red {
+    @apply badge bg-accent-red-light text-accent-red;
+  }
+
+  .badge-purple {
+    @apply badge bg-accent-purple-light text-accent-purple;
+  }
+
+  .badge-blue {
+    @apply badge bg-accent-blue-light text-accent-blue;
+  }
+
+  .badge-yellow {
+    @apply badge bg-accent-yellow-light text-accent-yellow;
+  }
+
+  .badge-orange {
+    @apply badge bg-accent-orange-light text-accent-orange;
+  }
+
+  .badge-pink {
+    @apply badge bg-accent-pink-light text-accent-pink;
+  }
+
+  .badge-gray {
+    @apply badge bg-surface-tertiary text-text-secondary;
+  }
+}

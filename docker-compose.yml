@@ -1,0 +1,15 @@
+services:
+  pathfinder-server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    ports:
+      - "3007:3007"
+    environment:
+      - NODE_ENV=production
+      - PORT=3007
+      - CORS_ORIGIN=https://pathfinder-game.vercel.app,http://localhost:3000
+      - DB_PATH=/app/data/pathfinder.db
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
