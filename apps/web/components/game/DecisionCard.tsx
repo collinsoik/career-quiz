@@ -124,7 +124,7 @@ export default function DecisionCard({
 
       {/* Keyboard hint */}
       <p className="text-center text-xs text-text-tertiary mt-4">
-        Press <kbd className="px-1.5 py-0.5 rounded bg-surface-tertiary border border-border-primary font-mono text-text-secondary">A</kbd>–<kbd className="px-1.5 py-0.5 rounded bg-surface-tertiary border border-border-primary font-mono text-text-secondary">{String.fromCharCode(64 + decision.choices.length)}</kbd> then <kbd className="px-1.5 py-0.5 rounded bg-surface-tertiary border border-border-primary font-mono text-text-secondary">Enter</kbd>
+        Press <kbd className="px-1.5 py-0.5 rounded bg-surface-tertiary border border-border-primary font-mono text-text-secondary">A</kbd>–<kbd className="px-1.5 py-0.5 rounded bg-surface-tertiary border border-border-primary font-mono text-text-secondary">{String.fromCharCode(64 + decision.choices.length)}</kbd> then <kbd className="px-1.5 py-0.5 rounded bg-surface-tertiary border border-border-primary font-mono text-text-secondary">Enter</kbd>, or click
       </p>
     </div>
   );

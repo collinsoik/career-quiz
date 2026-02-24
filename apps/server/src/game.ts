@@ -35,7 +35,7 @@ for (const scenario of SCENARIOS) {
 }
 
 // Strip weights from scenarios before sending to clients
-function getClientScenarios(): ClientScenario[] {
+export function getClientScenarios(): ClientScenario[] {
   return SCENARIOS.map((s) => ({
     id: s.id,
     title: s.title,
@@ -204,163 +204,178 @@ export function handleGameEvents(io: Server, socket: Socket): void {
 
   // choice:submit — Player submits a choice for a decision
   socket.on(CLIENT_EVENTS.CHOICE_SUBMIT, (payload: ChoiceSubmitPayload, ack?: (response: { success: boolean }) => void) => {
-    // Input validation
-    if (!payload?.decisionId || typeof payload.decisionId !== "string") {
-      return typeof ack === "function" ? ack({ success: false }) : undefined;
-    }
-    if (!payload?.choiceId || typeof payload.choiceId !== "string") {
-      return typeof ack === "function" ? ack({ success: false }) : undefined;
-    }
-
-    const roomCode = (socket as any).roomCode;
-    const room = roomCode ? getRoom(roomCode) : undefined;
-    if (!room || room.phase !== "playing") {
-      if (typeof ack === "function") ack({ success: false });
-      return;
-    }
-
-    const player = room.players[socket.id];
-    if (!player || player.isHost || player.completed) {
-      if (typeof ack === "function") ack({ success: false });
-      return;
-    }
-
-    const { decisionId, choiceId } = payload;
-
-    // Find the decision and choice via lookup map (server-side, with weights)
-    let foundChoice: { weights: Record<string, number> } | null = null;
-    let foundDecisionPrompt = "";
-    let foundChoiceText = "";
-    const lookupDecision = decisionMap.get(decisionId);
-    if (lookupDecision) {
-      foundDecisionPrompt = lookupDecision.prompt;
-      const choice = lookupDecision.choices.find((c) => c.id === choiceId);
-      if (choice) {
-        foundChoice = choice;
-        foundChoiceText = choice.text;
+    try {
+      // Input validation
+      if (!payload?.decisionId || typeof payload.decisionId !== "string") {
+        return typeof ack === "function" ? ack({ success: false }) : undefined;
       }
-    }
-
-    if (!foundChoice) {
-      if (typeof ack === "function") ack({ success: false });
-      return;
-    }
-
-    // Apply weights to player scores
-    for (const [category, weight] of Object.entries(foundChoice.weights)) {
-      if (category in player.scores) {
-        (player.scores as any)[category] += weight;
-      }
-    }
-
-    // Track choice in game state
-    const gs = gameStates.get(roomCode);
-    if (gs) {
-      if (!gs.choiceCounts[decisionId]) {
-        gs.choiceCounts[decisionId] = {};
-      }
-      gs.choiceCounts[decisionId][choiceId] =
-        (gs.choiceCounts[decisionId][choiceId] || 0) + 1;
-
-      // Save to DB
-      saveChoice(gs.sessionId, socket.id, decisionId, choiceId);
-    }
-
-    // Advance player position
-    const currentScenario = SCENARIOS[player.currentScenario];
-    if (currentScenario) {
-      if (player.currentDecision + 1 < currentScenario.decisions.length) {
-        // Next decision in same scenario
-        player.currentDecision++;
-      } else if (player.currentScenario + 1 < SCENARIOS.length) {
-        // Next scenario
-        player.currentScenario++;
-        player.currentDecision = 0;
-      } else {
-        // All done!
-        player.completed = true;
-      }
-    }
-
-    // Acknowledge successful choice processing
-    if (typeof ack === "function") ack({ success: true });
-
-    // Send updated player state to this player
-    socket.emit(SERVER_EVENTS.PLAYER_STATE, {
-      currentScenario: player.currentScenario,
-      currentDecision: player.currentDecision,
-      completed: player.completed,
-    });
-
-    // Generate feed items for host
-    if (gs) {
-      const hostSocket = room.hostId;
-
-      // Choice-based feed commentary
-      const totalForDecision = Object.values(gs.choiceCounts[decisionId] || {}).reduce((s, c) => s + c, 0);
-      const choiceCount = gs.choiceCounts[decisionId]?.[choiceId] || 0;
-
-      // Fun commentary when patterns emerge
-      if (totalForDecision >= 3 && choiceCount === 1) {
-        const feedItem = addFeedItem(roomCode, "choice", `${player.displayName} is the only one who chose to "${foundChoiceText.toLowerCase().slice(0, 60)}..."`);
-        if (feedItem) io.to(hostSocket).emit(SERVER_EVENTS.FEED_UPDATE, feedItem);
-      } else if (choiceCount >= 3 && totalForDecision >= 4) {
-        const pct = Math.round((choiceCount / totalForDecision) * 100);
-        const feedItem = addFeedItem(roomCode, "stat", `${pct}% of explorers chose the same thing!`);
-        if (feedItem) io.to(hostSocket).emit(SERVER_EVENTS.FEED_UPDATE, feedItem);
+      if (!payload?.choiceId || typeof payload.choiceId !== "string") {
+        return typeof ack === "function" ? ack({ success: false }) : undefined;
       }
 
-      // Milestone commentary
-      if (player.currentScenario > 0 && player.currentDecision === 0 && !player.completed) {
-        const newScenario = SCENARIOS[player.currentScenario];
-        const feedItem = addFeedItem(roomCode, "milestone", `${player.displayName} just started "${newScenario.title}" ${newScenario.icon}`);
-        if (feedItem) io.to(hostSocket).emit(SERVER_EVENTS.FEED_UPDATE, feedItem);
+      const roomCode = (socket as any).roomCode;
+      const room = roomCode ? getRoom(roomCode) : undefined;
+      if (!room || room.phase !== "playing") {
+        if (typeof ack === "function") ack({ success: false });
+        return;
       }
 
-      // Completion
-      if (player.completed) {
-        const results = calculateResults(player);
-        gs.completedResults[socket.id] = results;
+      const player = room.players[socket.id];
+      if (!player || player.isHost || player.completed) {
+        if (typeof ack === "function") ack({ success: false });
+        return;
+      }
 
-        // Save to DB
-        savePlayerResult(
-          gs.sessionId,
-          socket.id,
-          player.displayName,
-          player.scores,
-          results.careers.map((c) => c.title),
-          false
-        );
+      const { decisionId, choiceId } = payload;
 
-        // Send results to the player
-        socket.emit(SERVER_EVENTS.PLAYER_RESULTS, results);
-
-        // Notify host
-        const feedItem = addFeedItem(roomCode, "completion", `${player.displayName} finished! Top interest: ${results.topCategories[0]?.label || "?"}`);
-        if (feedItem) io.to(hostSocket).emit(SERVER_EVENTS.FEED_UPDATE, feedItem);
-
-        io.to(hostSocket).emit(SERVER_EVENTS.PLAYER_COMPLETED, {
-          playerId: socket.id,
-          displayName: player.displayName,
-          topCategory: results.topCategories[0]?.label || "?",
-        });
-
-        // Check if all students are done
-        const students = Object.values(room.players).filter((p) => !p.isHost);
-        const allDone = students.every((p) => p.completed);
-        if (allDone) {
-          room.phase = "results";
-          const feedItem2 = addFeedItem(roomCode, "milestone", "Everyone has finished! Results are in.");
-          if (feedItem2) io.to(hostSocket).emit(SERVER_EVENTS.FEED_UPDATE, feedItem2);
-          io.to(roomCode).emit(SERVER_EVENTS.GAME_ALL_COMPLETED);
+      // Find the decision and choice via lookup map (server-side, with weights)
+      let foundChoice: { weights: Record<string, number> } | null = null;
+      let foundChoiceText = "";
+      const lookupDecision = decisionMap.get(decisionId);
+      if (lookupDecision) {
+        const choice = lookupDecision.choices.find((c) => c.id === choiceId);
+        if (choice) {
+          foundChoice = choice;
+          foundChoiceText = choice.text;
         }
       }
 
-      // Send updated class stats to host (throttled)
-      throttledClassStats(io, roomCode);
+      if (!foundChoice) {
+        if (typeof ack === "function") ack({ success: false });
+        return;
+      }
 
-      // Persist game state for crash recovery
-      persistGameState(rooms, gameStates);
+      // Apply weights to player scores
+      for (const [category, weight] of Object.entries(foundChoice.weights)) {
+        if (category in player.scores) {
+          (player.scores as any)[category] += weight;
+        }
+      }
+
+      // Track choice in game state
+      const gs = gameStates.get(roomCode);
+      if (gs) {
+        if (!gs.choiceCounts[decisionId]) {
+          gs.choiceCounts[decisionId] = {};
+        }
+        gs.choiceCounts[decisionId][choiceId] =
+          (gs.choiceCounts[decisionId][choiceId] || 0) + 1;
+
+        // Save to DB
+        try {
+          saveChoice(gs.sessionId, socket.id, decisionId, choiceId);
+        } catch (dbErr) {
+          console.error("Failed to save choice to DB:", dbErr);
+        }
+      }
+
+      // Advance player position
+      const currentScenario = SCENARIOS[player.currentScenario];
+      if (currentScenario) {
+        if (player.currentDecision + 1 < currentScenario.decisions.length) {
+          // Next decision in same scenario
+          player.currentDecision++;
+        } else if (player.currentScenario + 1 < SCENARIOS.length) {
+          // Next scenario
+          player.currentScenario++;
+          player.currentDecision = 0;
+        } else {
+          // All done!
+          player.completed = true;
+        }
+      }
+
+      // Acknowledge successful choice processing
+      if (typeof ack === "function") ack({ success: true });
+
+      // Send updated player state to this player
+      socket.emit(SERVER_EVENTS.PLAYER_STATE, {
+        currentScenario: player.currentScenario,
+        currentDecision: player.currentDecision,
+        completed: player.completed,
+      });
+
+      // Generate feed items for host
+      if (gs) {
+        const hostSocket = room.hostId;
+
+        // Choice-based feed commentary
+        const totalForDecision = Object.values(gs.choiceCounts[decisionId] || {}).reduce((s, c) => s + c, 0);
+        const choiceCount = gs.choiceCounts[decisionId]?.[choiceId] || 0;
+
+        // Fun commentary when patterns emerge
+        if (totalForDecision >= 3 && choiceCount === 1) {
+          const feedItem = addFeedItem(roomCode, "choice", `${player.displayName} is the only one who chose to "${foundChoiceText.toLowerCase().slice(0, 60)}..."`);
+          if (feedItem) io.to(hostSocket).emit(SERVER_EVENTS.FEED_UPDATE, feedItem);
+        } else if (choiceCount >= 3 && totalForDecision >= 4) {
+          const pct = Math.round((choiceCount / totalForDecision) * 100);
+          const feedItem = addFeedItem(roomCode, "stat", `${pct}% of explorers chose the same thing!`);
+          if (feedItem) io.to(hostSocket).emit(SERVER_EVENTS.FEED_UPDATE, feedItem);
+        }
+
+        // Milestone commentary
+        if (player.currentScenario > 0 && player.currentDecision === 0 && !player.completed) {
+          const newScenario = SCENARIOS[player.currentScenario];
+          const feedItem = addFeedItem(roomCode, "milestone", `${player.displayName} just started "${newScenario.title}" ${newScenario.icon}`);
+          if (feedItem) io.to(hostSocket).emit(SERVER_EVENTS.FEED_UPDATE, feedItem);
+        }
+
+        // Completion
+        if (player.completed) {
+          try {
+            const results = calculateResults(player);
+            gs.completedResults[socket.id] = results;
+
+            // Save to DB
+            try {
+              savePlayerResult(
+                gs.sessionId,
+                socket.id,
+                player.displayName,
+                player.scores,
+                results.careers.map((c) => c.title),
+                false
+              );
+            } catch (dbErr) {
+              console.error("Failed to save player result to DB:", dbErr);
+            }
+
+            // Send results to the player
+            socket.emit(SERVER_EVENTS.PLAYER_RESULTS, results);
+
+            // Notify host
+            const feedItem = addFeedItem(roomCode, "completion", `${player.displayName} finished! Top interest: ${results.topCategories[0]?.label || "?"}`);
+            if (feedItem) io.to(hostSocket).emit(SERVER_EVENTS.FEED_UPDATE, feedItem);
+
+            io.to(hostSocket).emit(SERVER_EVENTS.PLAYER_COMPLETED, {
+              playerId: socket.id,
+              displayName: player.displayName,
+              topCategory: results.topCategories[0]?.label || "?",
+            });
+          } catch (resultErr) {
+            console.error("Failed to calculate/send results:", resultErr);
+          }
+
+          // Check if all students are done
+          const students = Object.values(room.players).filter((p) => !p.isHost);
+          const allDone = students.every((p) => p.completed);
+          if (allDone) {
+            room.phase = "results";
+            const feedItem2 = addFeedItem(roomCode, "milestone", "Everyone has finished! Results are in.");
+            if (feedItem2) io.to(hostSocket).emit(SERVER_EVENTS.FEED_UPDATE, feedItem2);
+            io.to(roomCode).emit(SERVER_EVENTS.GAME_ALL_COMPLETED);
+          }
+        }
+
+        // Send updated class stats to host (throttled)
+        throttledClassStats(io, roomCode);
+
+        // Persist game state for crash recovery
+        persistGameState(rooms, gameStates);
+      }
+    } catch (err) {
+      console.error("Unhandled error in CHOICE_SUBMIT:", err);
+      if (typeof ack === "function") ack({ success: false });
     }
   });
 

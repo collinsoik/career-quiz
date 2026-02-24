@@ -47,6 +47,11 @@ export default function LobbyPage() {
           if (response.success && response.room) {
             setRoom(response.room);
             setPlayerId(response.playerId || socket.id!);
+            // If game is already in progress, go straight to play
+            if (response.room.phase === "playing") {
+              // Scenarios will arrive via GAME_STARTED event from server
+              router.push(`/play/${roomCode}`);
+            }
           } else {
             // Room not found or join failed
             router.push('/?error=' + encodeURIComponent(response.error || 'Room not found'));

@@ -121,12 +121,8 @@ export function handleRoomEvents(io: Server, socket: Socket): void {
       return;
     }
 
-    if (room.phase !== "lobby") {
-      callback?.({ success: false, error: "Game already in progress" });
-      socket.emit(SERVER_EVENTS.ROOM_ERROR, {
-        message: "Game already in progress",
-        code: "GAME_IN_PROGRESS",
-      });
+    if (room.phase === "results") {
+      callback?.({ success: false, error: "Game has ended" });
       return;
     }
 
@@ -160,6 +156,12 @@ export function handleRoomEvents(io: Server, socket: Socket): void {
 
     // Send full room state to joining player
     callback?.({ success: true, room, playerId: socket.id });
+
+    // If the game is already in progress, send scenarios so the late joiner can start playing
+    if (room.phase === "playing") {
+      const { getClientScenarios } = require("./game");
+      socket.emit(SERVER_EVENTS.GAME_STARTED, { scenarios: getClientScenarios() });
+    }
 
     // Broadcast to everyone else
     socket.to(payload.roomCode).emit(SERVER_EVENTS.ROOM_PLAYER_JOINED, {
