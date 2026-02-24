@@ -291,7 +291,7 @@ export const SCENARIOS: Scenario[] = [
           },
           {
             id: "space-3c",
-            text: "Take charge — position the crew safely and establish an observation perimeter",
+            text: "Take charge — position the crew safely and establish a observation perimeter",
             weights: { earthEnergy: 3, designBuild: 1 },
           },
           {
