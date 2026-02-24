@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getSocket } from "@/lib/socket";
 import { useGameStore } from "@/lib/game-store";
+import Link from "next/link";
 import { CLIENT_EVENTS, SERVER_EVENTS, INTEREST_CATEGORIES } from "@pathfinder/shared";
 import type { PlayerResults } from "@pathfinder/shared";
 import InterestRadar from "@/components/results/InterestRadar";
@@ -124,6 +125,18 @@ export default function ResultsPage() {
                 <CareerCard key={career.id} career={career} rank={idx + 1} />
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Explore More */}
+        {showCareers && (
+          <div className="text-center mb-8 animate-fade-in">
+            <p className="text-sm text-text-secondary mb-3">
+              Want to explore more?
+            </p>
+            <Link href="/explore" className="btn-ghost text-sm">
+              Browse All 24 STEM Majors →
+            </Link>
           </div>
         )}
 

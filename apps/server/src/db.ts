@@ -40,12 +40,12 @@ export async function initDb(): Promise<void> {
       id TEXT PRIMARY KEY,
       session_id TEXT REFERENCES sessions(id),
       display_name TEXT,
-      builder_score REAL DEFAULT 0,
-      investigator_score REAL DEFAULT 0,
-      creator_score REAL DEFAULT 0,
-      connector_score REAL DEFAULT 0,
-      leader_score REAL DEFAULT 0,
-      organizer_score REAL DEFAULT 0,
+      health_biomedical_score REAL DEFAULT 0,
+      life_ecology_score REAL DEFAULT 0,
+      computing_score REAL DEFAULT 0,
+      chemistry_materials_score REAL DEFAULT 0,
+      design_build_score REAL DEFAULT 0,
+      earth_energy_score REAL DEFAULT 0,
       top_careers TEXT,
       shared_with_teacher INTEGER DEFAULT 0,
       completed_at DATETIME
@@ -97,18 +97,18 @@ export function savePlayerResult(
 ): void {
   db.run(
     `INSERT OR REPLACE INTO player_results
-      (id, session_id, display_name, builder_score, investigator_score, creator_score, connector_score, leader_score, organizer_score, top_careers, shared_with_teacher, completed_at)
+      (id, session_id, display_name, health_biomedical_score, life_ecology_score, computing_score, chemistry_materials_score, design_build_score, earth_energy_score, top_careers, shared_with_teacher, completed_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       `${sessionId}-${playerId}`,
       sessionId,
       displayName,
-      scores.builder || 0,
-      scores.investigator || 0,
-      scores.creator || 0,
-      scores.connector || 0,
-      scores.leader || 0,
-      scores.organizer || 0,
+      scores.healthBiomedical || 0,
+      scores.lifeEcology || 0,
+      scores.computing || 0,
+      scores.chemistryMaterials || 0,
+      scores.designBuild || 0,
+      scores.earthEnergy || 0,
       JSON.stringify(topCareers),
       sharedWithTeacher ? 1 : 0,
       new Date().toISOString(),

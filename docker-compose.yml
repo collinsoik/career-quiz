@@ -8,7 +8,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3007
-      - CORS_ORIGIN=https://pathfinder-game.vercel.app,http://localhost:3000
+      - CORS_ORIGIN=https://careerquiz-nine.vercel.app,https://pathfinder.collinsoik.dev,http://localhost:3000
       - DB_PATH=/app/data/pathfinder.db
     volumes:
       - ./data:/app/data

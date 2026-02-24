@@ -1,6 +1,6 @@
 // ==========================================
 // Core Types for Pathfinder
-// Interactive Career Exploration Game
+// Interactive STEM Major Exploration Game
 // ==========================================
 
 export interface Player {
@@ -17,23 +17,23 @@ export interface Player {
 }
 
 export interface InterestScores {
-  builder: number;    // Realistic — hands-on, mechanical
-  investigator: number; // Investigative — analytical, curious
-  creator: number;    // Artistic — creative, expressive
-  connector: number;  // Social — helping, teaching
-  leader: number;     // Enterprising — persuading, managing
-  organizer: number;  // Conventional — systematic, detailed
+  healthBiomedical: number;   // Health-tech, genetics, molecular biology
+  lifeEcology: number;        // Living systems, fieldwork, wildlife
+  computing: number;           // Code, data, digital systems
+  chemistryMaterials: number;  // Matter, molecules, materials
+  designBuild: number;         // Designing and building physical things
+  earthEnergy: number;         // Planet-scale systems, energy, climate
 }
 
 export type InterestCategory = keyof InterestScores;
 
 export const INTEREST_CATEGORIES: { key: InterestCategory; label: string; description: string; color: string }[] = [
-  { key: "builder", label: "Builder", description: "Hands-on, making & fixing things", color: "#F97316" },
-  { key: "investigator", label: "Investigator", description: "Analyzing, researching & discovering", color: "#3B82F6" },
-  { key: "creator", label: "Creator", description: "Designing, imagining & expressing", color: "#A855F7" },
-  { key: "connector", label: "Connector", description: "Helping, teaching & supporting others", color: "#EC4899" },
-  { key: "leader", label: "Leader", description: "Leading, persuading & managing", color: "#EAB308" },
-  { key: "organizer", label: "Organizer", description: "Planning, organizing & tracking details", color: "#22C55E" },
+  { key: "healthBiomedical", label: "Health & Biomedical", description: "Health-tech, genetics & molecular biology", color: "#EC4899" },
+  { key: "lifeEcology", label: "Life & Ecology", description: "Living systems, fieldwork & wildlife", color: "#22C55E" },
+  { key: "computing", label: "Computing & Software", description: "Code, data & digital systems", color: "#3B82F6" },
+  { key: "chemistryMaterials", label: "Chemistry & Materials", description: "Matter, molecules & materials", color: "#F97316" },
+  { key: "designBuild", label: "Design & Build", description: "Designing & building physical things", color: "#A855F7" },
+  { key: "earthEnergy", label: "Earth & Energy", description: "Planet-scale systems, energy & climate", color: "#EAB308" },
 ];
 
 // ── Room & Game State ─────────────────────
@@ -108,12 +108,12 @@ export interface Career {
 // ── Results ───────────────────────────────
 
 export interface NormalizedProfile {
-  builder: number;      // 0-100
-  investigator: number;
-  creator: number;
-  connector: number;
-  leader: number;
-  organizer: number;
+  healthBiomedical: number;   // 0-100
+  lifeEcology: number;
+  computing: number;
+  chemistryMaterials: number;
+  designBuild: number;
+  earthEnergy: number;
 }
 
 export interface PlayerResults {

@@ -92,8 +92,8 @@ function computeClassStats(roomCode: string): ClassStats | null {
 
   // Category distribution (among completed players)
   const categoryDistribution: Record<InterestCategory, number> = {
-    builder: 0, investigator: 0, creator: 0,
-    connector: 0, leader: 0, organizer: 0,
+    healthBiomedical: 0, lifeEcology: 0, computing: 0,
+    chemistryMaterials: 0, designBuild: 0, earthEnergy: 0,
   };
 
   for (const result of Object.values(gs.completedResults)) {

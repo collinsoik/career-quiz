@@ -114,9 +114,12 @@ export default function LandingPage() {
       </div>
 
       {/* Footer */}
-      <div className="mt-12 text-center relative z-10">
+      <div className="mt-12 text-center relative z-10 space-y-4">
+        <Link href="/explore" className="btn-ghost text-sm">
+          Explore STEM Majors →
+        </Link>
         <p className="text-xs text-text-disabled">
-          An interactive career exploration game for classrooms
+          An interactive STEM major exploration game for classrooms
         </p>
       </div>
     </main>

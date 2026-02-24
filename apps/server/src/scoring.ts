@@ -1,7 +1,6 @@
 import {
   Player,
   InterestScores,
-  InterestCategory,
   NormalizedProfile,
   PlayerResults,
   Career,
@@ -14,22 +13,22 @@ import {
  */
 function normalizeProfile(scores: InterestScores): NormalizedProfile {
   const maxScore = Math.max(
-    scores.builder,
-    scores.investigator,
-    scores.creator,
-    scores.connector,
-    scores.leader,
-    scores.organizer,
+    scores.healthBiomedical,
+    scores.lifeEcology,
+    scores.computing,
+    scores.chemistryMaterials,
+    scores.designBuild,
+    scores.earthEnergy,
     1 // avoid division by zero
   );
 
   return {
-    builder: Math.round((scores.builder / maxScore) * 100),
-    investigator: Math.round((scores.investigator / maxScore) * 100),
-    creator: Math.round((scores.creator / maxScore) * 100),
-    connector: Math.round((scores.connector / maxScore) * 100),
-    leader: Math.round((scores.leader / maxScore) * 100),
-    organizer: Math.round((scores.organizer / maxScore) * 100),
+    healthBiomedical: Math.round((scores.healthBiomedical / maxScore) * 100),
+    lifeEcology: Math.round((scores.lifeEcology / maxScore) * 100),
+    computing: Math.round((scores.computing / maxScore) * 100),
+    chemistryMaterials: Math.round((scores.chemistryMaterials / maxScore) * 100),
+    designBuild: Math.round((scores.designBuild / maxScore) * 100),
+    earthEnergy: Math.round((scores.earthEnergy / maxScore) * 100),
   };
 }
 

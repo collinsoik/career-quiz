@@ -29,7 +29,7 @@ export function getRoom(code: string): Room | undefined {
 }
 
 function emptyScores(): InterestScores {
-  return { builder: 0, investigator: 0, creator: 0, connector: 0, leader: 0, organizer: 0 };
+  return { healthBiomedical: 0, lifeEcology: 0, computing: 0, chemistryMaterials: 0, designBuild: 0, earthEnergy: 0 };
 }
 
 export function handleRoomEvents(io: Server, socket: Socket): void {
