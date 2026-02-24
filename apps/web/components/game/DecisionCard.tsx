@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { ClientDecision } from "@pathfinder/shared";
 
 interface DecisionCardProps {
@@ -27,6 +27,37 @@ export default function DecisionCard({
     setSelectedId(choiceId);
     onChoiceSelect(choiceId);
   }
+
+  // Keyboard shortcuts: A/B/C/D to select, Enter to confirm
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (isSubmitting) return;
+
+      const key = e.key.toLowerCase();
+      // A=0, B=1, C=2, D=3
+      const idx = key.charCodeAt(0) - 97; // 'a' = 97
+      if (idx >= 0 && idx < decision.choices.length) {
+        e.preventDefault();
+        setSelectedId(decision.choices[idx].id);
+      }
+
+      if (e.key === "Enter" && selectedId) {
+        e.preventDefault();
+        onChoiceSelect(selectedId);
+      }
+    },
+    [isSubmitting, decision.choices, selectedId, onChoiceSelect]
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
+
+  // Reset selection when decision changes
+  useEffect(() => {
+    setSelectedId(null);
+  }, [decision.id]);
 
   return (
     <div className="max-w-2xl w-full animate-slide-up">
@@ -90,6 +121,11 @@ export default function DecisionCard({
           );
         })}
       </div>
+
+      {/* Keyboard hint */}
+      <p className="text-center text-xs text-text-tertiary mt-4">
+        Press <kbd className="px-1.5 py-0.5 rounded bg-surface-tertiary border border-border-primary font-mono text-text-secondary">A</kbd>–<kbd className="px-1.5 py-0.5 rounded bg-surface-tertiary border border-border-primary font-mono text-text-secondary">{String.fromCharCode(64 + decision.choices.length)}</kbd> then <kbd className="px-1.5 py-0.5 rounded bg-surface-tertiary border border-border-primary font-mono text-text-secondary">Enter</kbd>
+      </p>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { handleRoomEvents } from "./rooms";
 import { handleGameEvents } from "./game";
-import { initDb } from "./db";
+import { initDb, flushDb } from "./db";
 
 const app = express();
 const httpServer = createServer(app);
@@ -48,5 +48,9 @@ start().catch((err) => {
   console.error("Failed to start server:", err);
   process.exit(1);
 });
+
+// Flush pending DB writes on shutdown
+process.on("SIGINT", () => { flushDb(); process.exit(0); });
+process.on("SIGTERM", () => { flushDb(); process.exit(0); });
 
 export { io };

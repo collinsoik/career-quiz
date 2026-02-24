@@ -25,6 +25,14 @@ interface RoomGameState {
 
 const gameStates = new Map<string, RoomGameState>();
 
+// Pre-built lookup map: decisionId -> Decision (with weights)
+const decisionMap = new Map<string, (typeof SCENARIOS)[number]["decisions"][number]>();
+for (const scenario of SCENARIOS) {
+  for (const decision of scenario.decisions) {
+    decisionMap.set(decision.id, decision);
+  }
+}
+
 // Strip weights from scenarios before sending to clients
 function getClientScenarios(): ClientScenario[] {
   return SCENARIOS.map((s) => ({
@@ -105,16 +113,12 @@ function computeClassStats(roomCode: string): ClassStats | null {
   // Popular choices
   const popularChoices: ClassStats["popularChoices"] = [];
   for (const [decisionId, choices] of Object.entries(gs.choiceCounts)) {
+    const decision = decisionMap.get(decisionId);
     for (const [choiceId, count] of Object.entries(choices)) {
-      // Find the choice text
       let choiceText = choiceId;
-      for (const scenario of SCENARIOS) {
-        for (const decision of scenario.decisions) {
-          if (decision.id === decisionId) {
-            const choice = decision.choices.find((c) => c.id === choiceId);
-            if (choice) choiceText = choice.text;
-          }
-        }
+      if (decision) {
+        const choice = decision.choices.find((c) => c.id === choiceId);
+        if (choice) choiceText = choice.text;
       }
       popularChoices.push({ decisionId, choiceId, choiceText, count });
     }
@@ -188,20 +192,17 @@ export function handleGameEvents(io: Server, socket: Socket): void {
 
     const { decisionId, choiceId } = payload;
 
-    // Find the decision and choice in scenarios (server-side, with weights)
+    // Find the decision and choice via lookup map (server-side, with weights)
     let foundChoice: { weights: Record<string, number> } | null = null;
     let foundDecisionPrompt = "";
     let foundChoiceText = "";
-    for (const scenario of SCENARIOS) {
-      for (const decision of scenario.decisions) {
-        if (decision.id === decisionId) {
-          foundDecisionPrompt = decision.prompt;
-          const choice = decision.choices.find((c) => c.id === choiceId);
-          if (choice) {
-            foundChoice = choice;
-            foundChoiceText = choice.text;
-          }
-        }
+    const lookupDecision = decisionMap.get(decisionId);
+    if (lookupDecision) {
+      foundDecisionPrompt = lookupDecision.prompt;
+      const choice = lookupDecision.choices.find((c) => c.id === choiceId);
+      if (choice) {
+        foundChoice = choice;
+        foundChoiceText = choice.text;
       }
     }
 

@@ -67,13 +67,35 @@ export async function initDb(): Promise<void> {
   persistDb();
 }
 
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+
 function persistDb(): void {
-  try {
-    const data = db.export();
-    const buffer = Buffer.from(data);
-    fs.writeFileSync(DB_PATH, buffer);
-  } catch (err) {
-    console.error("Failed to persist database:", err);
+  // Debounce writes — batch rapid operations into a single disk write
+  if (persistTimer) return;
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    try {
+      const data = db.export();
+      const buffer = Buffer.from(data);
+      fs.writeFileSync(DB_PATH, buffer);
+    } catch (err) {
+      console.error("Failed to persist database:", err);
+    }
+  }, 500);
+}
+
+/** Flush any pending writes immediately (call on shutdown). */
+export function flushDb(): void {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+    try {
+      const data = db.export();
+      const buffer = Buffer.from(data);
+      fs.writeFileSync(DB_PATH, buffer);
+    } catch (err) {
+      console.error("Failed to persist database:", err);
+    }
   }
 }
 
