@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
 interface WorkplaceCarouselProps {
@@ -9,14 +9,34 @@ interface WorkplaceCarouselProps {
 }
 
 export default function WorkplaceCarousel({ workplaces, color }: WorkplaceCarouselProps) {
-  const constraintRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [dragLeft, setDragLeft] = useState(0);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const content = contentRef.current;
+    if (!container || !content) return;
+
+    const measure = () => {
+      const overflow = content.scrollWidth - container.clientWidth;
+      setDragLeft(overflow > 0 ? -overflow : 0);
+    };
+
+    measure();
+
+    const ro = new ResizeObserver(measure);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [workplaces]);
 
   return (
-    <div ref={constraintRef} className="overflow-hidden">
+    <div ref={containerRef} className="overflow-hidden">
       <motion.div
+        ref={contentRef}
         drag="x"
-        dragConstraints={constraintRef}
-        className="flex gap-3 cursor-grab active:cursor-grabbing"
+        dragConstraints={{ left: dragLeft, right: 0 }}
+        className="flex gap-3 cursor-grab active:cursor-grabbing w-max"
       >
         {workplaces.map((place, idx) => (
           <motion.div
