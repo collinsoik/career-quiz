@@ -1,12 +1,13 @@
 "use client";
 
+import React from "react";
 import type { ClassStats } from "@pathfinder/shared";
 
 interface ProgressTrackerProps {
   stats: ClassStats | null;
 }
 
-export default function ProgressTracker({ stats }: ProgressTrackerProps) {
+function ProgressTracker({ stats }: ProgressTrackerProps) {
   if (!stats) {
     return (
       <div className="card-elevated">
@@ -60,3 +61,5 @@ export default function ProgressTracker({ stats }: ProgressTrackerProps) {
     </div>
   );
 }
+
+export default React.memo(ProgressTracker);

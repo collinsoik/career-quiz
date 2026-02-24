@@ -7,6 +7,7 @@ import {
   SERVER_EVENTS,
   RoomJoinPayload,
 } from "@pathfinder/shared";
+import { persistGameState } from "./state-recovery";
 
 // In-memory room store
 const rooms = new Map<string, Room>();
@@ -28,8 +29,31 @@ export function getRoom(code: string): Room | undefined {
   return rooms.get(code);
 }
 
+const MAX_PLAYERS = 100;
+
 function emptyScores(): InterestScores {
   return { healthBiomedical: 0, lifeEcology: 0, computing: 0, chemistryMaterials: 0, designBuild: 0, earthEnergy: 0 };
+}
+
+// Debounced room-state broadcaster to avoid flooding clients on rapid join/disconnect
+const roomBroadcastTimers = new Map<string, NodeJS.Timeout>();
+
+function broadcastRoomState(io: Server, roomCode: string) {
+  if (roomBroadcastTimers.has(roomCode)) return; // already scheduled
+  roomBroadcastTimers.set(roomCode, setTimeout(() => {
+    roomBroadcastTimers.delete(roomCode);
+    const room = rooms.get(roomCode);
+    if (room) {
+      // Strip scores from broadcast
+      const sanitized = {
+        ...room,
+        players: Object.fromEntries(
+          Object.entries(room.players).map(([id, p]) => [id, { ...p, scores: undefined }])
+        ),
+      };
+      io.to(roomCode).emit(SERVER_EVENTS.ROOM_STATE, sanitized);
+    }
+  }, 200));
 }
 
 export function handleRoomEvents(io: Server, socket: Socket): void {
@@ -69,10 +93,23 @@ export function handleRoomEvents(io: Server, socket: Socket): void {
     (socket as any).playerId = socket.id;
 
     callback?.({ success: true, roomCode: code, room });
+
+    // Persist game state for crash recovery
+    const { gameStates } = require("./game");
+    persistGameState(rooms, gameStates);
   });
 
   // room:join — Player joins an existing room
   socket.on(CLIENT_EVENTS.ROOM_JOIN, (payload: RoomJoinPayload, callback) => {
+    // Input validation
+    if (!payload?.playerName || typeof payload.playerName !== "string" || payload.playerName.length > 30) {
+      return callback?.({ success: false, error: "Invalid player name" });
+    }
+    if (!payload?.roomCode || typeof payload.roomCode !== "string" || !/^\d{4}$/.test(payload.roomCode)) {
+      return callback?.({ success: false, error: "Invalid room code" });
+    }
+    payload.playerName = payload.playerName.trim().slice(0, 30);
+
     const room = rooms.get(payload.roomCode);
 
     if (!room) {
@@ -90,6 +127,11 @@ export function handleRoomEvents(io: Server, socket: Socket): void {
         message: "Game already in progress",
         code: "GAME_IN_PROGRESS",
       });
+      return;
+    }
+
+    if (Object.keys(room.players).length >= MAX_PLAYERS) {
+      callback?.({ success: false, error: "Room is full" });
       return;
     }
 
@@ -124,8 +166,12 @@ export function handleRoomEvents(io: Server, socket: Socket): void {
       player: { id: player.id, displayName: player.displayName },
     });
 
-    // Send updated room state to all
-    io.to(payload.roomCode).emit(SERVER_EVENTS.ROOM_STATE, room);
+    // Send updated room state to all (debounced)
+    broadcastRoomState(io, payload.roomCode);
+
+    // Persist game state for crash recovery
+    const { gameStates } = require("./game");
+    persistGameState(rooms, gameStates);
   });
 
   // room:rejoin — Reconnecting client re-associates with their room
@@ -172,7 +218,7 @@ export function handleRoomEvents(io: Server, socket: Socket): void {
       (socket as any).playerId = newSocketId;
 
       callback?.({ success: true, room, playerId: newSocketId });
-      io.to(payload.roomCode).emit(SERVER_EVENTS.ROOM_STATE, room);
+      broadcastRoomState(io, payload.roomCode);
     }
   );
 
@@ -190,7 +236,11 @@ export function handleRoomEvents(io: Server, socket: Socket): void {
       io.to(roomCode).emit(SERVER_EVENTS.ROOM_PLAYER_LEFT, {
         playerId: socket.id,
       });
-      io.to(roomCode).emit(SERVER_EVENTS.ROOM_STATE, room);
+      broadcastRoomState(io, roomCode);
+
+      // Persist game state for crash recovery
+      const { gameStates } = require("./game");
+      persistGameState(rooms, gameStates);
     }
   });
 }

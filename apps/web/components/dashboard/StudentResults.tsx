@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { INTEREST_CATEGORIES } from "@pathfinder/shared";
 import type { PlayerResults } from "@pathfinder/shared";
 
@@ -14,7 +15,7 @@ interface StudentResultsProps {
   students: CompletedStudent[];
 }
 
-export default function StudentResults({ students }: StudentResultsProps) {
+function StudentResults({ students }: StudentResultsProps) {
   return (
     <div className="card-elevated">
       <h2 className="text-sm font-semibold text-text-secondary mb-4 uppercase tracking-wider">
@@ -77,3 +78,5 @@ export default function StudentResults({ students }: StudentResultsProps) {
     </div>
   );
 }
+
+export default React.memo(StudentResults);

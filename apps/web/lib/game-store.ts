@@ -26,6 +26,7 @@ interface GameStore {
   // Actions
   setRoom: (room: Room) => void;
   setPlayerId: (playerId: string) => void;
+  hydrateFromSession: () => void;
   setPhase: (phase: GamePhase) => void;
   setScenarios: (scenarios: ClientScenario[]) => void;
   advancePosition: (scenario: number, decision: number, completed: boolean) => void;
@@ -54,7 +55,20 @@ export const useGameStore = create<GameStore>((set) => ({
   ...initialState,
 
   setRoom: (room) => set({ room, phase: room.phase }),
-  setPlayerId: (playerId) => set({ playerId }),
+  setPlayerId: (playerId) => {
+    if (playerId && typeof window !== "undefined") {
+      sessionStorage.setItem("pathfinder-playerId", playerId);
+    }
+    set({ playerId });
+  },
+  hydrateFromSession: () => {
+    if (typeof window !== "undefined") {
+      const savedPlayerId = sessionStorage.getItem("pathfinder-playerId");
+      if (savedPlayerId) {
+        set({ playerId: savedPlayerId });
+      }
+    }
+  },
   setPhase: (phase) => set({ phase }),
   setScenarios: (scenarios) => set({ scenarios }),
   advancePosition: (currentScenario, currentDecision, completed) =>

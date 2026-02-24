@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { INTEREST_CATEGORIES } from "@pathfinder/shared";
 import type { ClassStats, InterestCategory } from "@pathfinder/shared";
 
@@ -7,7 +8,7 @@ interface ChoiceDistributionProps {
   stats: ClassStats;
 }
 
-export default function ChoiceDistribution({ stats }: ChoiceDistributionProps) {
+function ChoiceDistribution({ stats }: ChoiceDistributionProps) {
   const totalCompleted = stats.completedPlayers || 1;
 
   return (
@@ -54,3 +55,5 @@ export default function ChoiceDistribution({ stats }: ChoiceDistributionProps) {
     </div>
   );
 }
+
+export default React.memo(ChoiceDistribution);

@@ -15,7 +15,7 @@ export default function LobbyPage() {
   const roomCode = params.roomCode as string;
   const playerName = searchParams.get("name");
 
-  const { room, playerId, setRoom, setPlayerId, setScenarios, setPhase } = useGameStore();
+  const { room, playerId, setRoom, setPlayerId, setScenarios, setPhase, hydrateFromSession } = useGameStore();
   const [dots, setDots] = useState("");
   const [startError, setStartError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
@@ -30,6 +30,11 @@ export default function LobbyPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Hydrate playerId from sessionStorage on mount
+  useEffect(() => {
+    hydrateFromSession();
+  }, [hydrateFromSession]);
+
   // Connect and join room
   useEffect(() => {
     const socket = connectSocket();
@@ -42,6 +47,9 @@ export default function LobbyPage() {
           if (response.success && response.room) {
             setRoom(response.room);
             setPlayerId(response.playerId || socket.id!);
+          } else {
+            // Room not found or join failed
+            router.push('/?error=' + encodeURIComponent(response.error || 'Room not found'));
           }
         }
       );

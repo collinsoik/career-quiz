@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { connectSocket, getSocket } from "@/lib/socket";
 import { useGameStore } from "@/lib/game-store";
@@ -8,7 +8,7 @@ import {
   CLIENT_EVENTS,
   SERVER_EVENTS,
 } from "@pathfinder/shared";
-import type { ClientScenario, PlayerResults, PlayerStatePayload } from "@pathfinder/shared";
+import type { ClientScenario, PlayerResults, PlayerStatePayload, Room } from "@pathfinder/shared";
 import ScenarioIntro from "@/components/game/ScenarioIntro";
 import DecisionCard from "@/components/game/DecisionCard";
 import ProgressBar from "@/components/game/ProgressBar";
@@ -28,11 +28,18 @@ export default function PlayPage() {
     advancePosition,
     setResults,
     setPhase,
+    hydrateFromSession,
   } = useGameStore();
 
   const [showIntro, setShowIntro] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastScenarioIndex, setLastScenarioIndex] = useState(0);
+  const submitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Hydrate playerId from sessionStorage on mount
+  useEffect(() => {
+    hydrateFromSession();
+  }, [hydrateFromSession]);
 
   // Connect and listen for events
   useEffect(() => {
@@ -50,13 +57,39 @@ export default function PlayPage() {
         if (useGameStore.getState().scenarios.length === 0) {
           router.push("/");
         }
-      }, 3000);
+      }, 10000);
 
       return () => {
         clearTimeout(timeout);
         socket.off(SERVER_EVENTS.GAME_STARTED);
       };
     }
+
+    // Re-sync state on reconnection
+    const onReconnect = () => {
+      const currentPlayerId = useGameStore.getState().playerId;
+      if (currentPlayerId) {
+        socket.emit(
+          CLIENT_EVENTS.ROOM_REJOIN,
+          { roomCode, playerId: currentPlayerId },
+          (response: { success: boolean; room?: Room }) => {
+            if (!response.success) {
+              router.push("/");
+            }
+          }
+        );
+      }
+    };
+
+    let hasConnected = false;
+    const onConnect = () => {
+      if (hasConnected) {
+        onReconnect();
+      }
+      hasConnected = true;
+    };
+
+    socket.on("connect", onConnect);
 
     socket.on(SERVER_EVENTS.PLAYER_STATE, (data: PlayerStatePayload) => {
       advancePosition(data.currentScenario, data.currentDecision, data.completed);
@@ -68,11 +101,30 @@ export default function PlayPage() {
       router.push(`/results/${roomCode}`);
     });
 
+    // Reconnect when tab becomes visible again
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible" && socket.disconnected) {
+        socket.connect();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     return () => {
+      socket.off("connect", onConnect);
       socket.off(SERVER_EVENTS.PLAYER_STATE);
       socket.off(SERVER_EVENTS.PLAYER_RESULTS);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [scenarios.length, roomCode, router, setScenarios, advancePosition, setResults, setPhase]);
+
+  // Clean up submit timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (submitTimeoutRef.current) {
+        clearTimeout(submitTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Show scenario intro when entering a new scenario
   useEffect(() => {
@@ -125,10 +177,21 @@ export default function PlayPage() {
     setIsSubmitting(true);
 
     const socket = getSocket();
-    socket.emit(CLIENT_EVENTS.CHOICE_SUBMIT, {
-      decisionId: decision.id,
-      choiceId,
-    });
+
+    const submitTimeout = setTimeout(() => {
+      setIsSubmitting(false);
+      // Let user try again
+    }, 5000);
+    submitTimeoutRef.current = submitTimeout;
+
+    socket.emit(
+      CLIENT_EVENTS.CHOICE_SUBMIT,
+      { decisionId: decision.id, choiceId },
+      (response: { success: boolean }) => {
+        clearTimeout(submitTimeout);
+        // Server acknowledged — PLAYER_STATE event will update the UI
+      }
+    );
   }
 
   if (showIntro) {

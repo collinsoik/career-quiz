@@ -14,6 +14,7 @@ import {
 import { getRoom, rooms } from "./rooms";
 import { calculateResults } from "./scoring";
 import { saveSession, saveChoice, savePlayerResult } from "./db";
+import { persistGameState } from "./state-recovery";
 
 // Per-room game state (kept separate from Room to avoid bloating broadcasts)
 interface RoomGameState {
@@ -23,7 +24,7 @@ interface RoomGameState {
   completedResults: Record<string, ReturnType<typeof calculateResults>>; // playerId -> results
 }
 
-const gameStates = new Map<string, RoomGameState>();
+export const gameStates = new Map<string, RoomGameState>();
 
 // Pre-built lookup map: decisionId -> Decision (with weights)
 const decisionMap = new Map<string, (typeof SCENARIOS)[number]["decisions"][number]>();
@@ -134,6 +135,23 @@ function computeClassStats(roomCode: string): ClassStats | null {
   };
 }
 
+// Throttled class-stats broadcaster to avoid recomputing on every single choice
+const classStatsTimers = new Map<string, NodeJS.Timeout>();
+
+function throttledClassStats(io: Server, roomCode: string) {
+  if (classStatsTimers.has(roomCode)) return;
+  classStatsTimers.set(roomCode, setTimeout(() => {
+    classStatsTimers.delete(roomCode);
+    const room = getRoom(roomCode);
+    const gs = gameStates.get(roomCode);
+    if (!room || !gs) return;
+    const stats = computeClassStats(roomCode);
+    if (stats) {
+      io.to(room.hostId).emit(SERVER_EVENTS.CLASS_STATS, stats);
+    }
+  }, 500));
+}
+
 export function handleGameEvents(io: Server, socket: Socket): void {
   // game:start — Host starts the game
   socket.on(CLIENT_EVENTS.GAME_START, (_payload: unknown, callback) => {
@@ -179,16 +197,33 @@ export function handleGameEvents(io: Server, socket: Socket): void {
     }
 
     callback?.({ success: true });
+
+    // Persist game state for crash recovery
+    persistGameState(rooms, gameStates);
   });
 
   // choice:submit — Player submits a choice for a decision
-  socket.on(CLIENT_EVENTS.CHOICE_SUBMIT, (payload: ChoiceSubmitPayload) => {
+  socket.on(CLIENT_EVENTS.CHOICE_SUBMIT, (payload: ChoiceSubmitPayload, ack?: (response: { success: boolean }) => void) => {
+    // Input validation
+    if (!payload?.decisionId || typeof payload.decisionId !== "string") {
+      return typeof ack === "function" ? ack({ success: false }) : undefined;
+    }
+    if (!payload?.choiceId || typeof payload.choiceId !== "string") {
+      return typeof ack === "function" ? ack({ success: false }) : undefined;
+    }
+
     const roomCode = (socket as any).roomCode;
     const room = roomCode ? getRoom(roomCode) : undefined;
-    if (!room || room.phase !== "playing") return;
+    if (!room || room.phase !== "playing") {
+      if (typeof ack === "function") ack({ success: false });
+      return;
+    }
 
     const player = room.players[socket.id];
-    if (!player || player.isHost || player.completed) return;
+    if (!player || player.isHost || player.completed) {
+      if (typeof ack === "function") ack({ success: false });
+      return;
+    }
 
     const { decisionId, choiceId } = payload;
 
@@ -206,7 +241,10 @@ export function handleGameEvents(io: Server, socket: Socket): void {
       }
     }
 
-    if (!foundChoice) return;
+    if (!foundChoice) {
+      if (typeof ack === "function") ack({ success: false });
+      return;
+    }
 
     // Apply weights to player scores
     for (const [category, weight] of Object.entries(foundChoice.weights)) {
@@ -243,6 +281,9 @@ export function handleGameEvents(io: Server, socket: Socket): void {
         player.completed = true;
       }
     }
+
+    // Acknowledge successful choice processing
+    if (typeof ack === "function") ack({ success: true });
 
     // Send updated player state to this player
     socket.emit(SERVER_EVENTS.PLAYER_STATE, {
@@ -315,11 +356,11 @@ export function handleGameEvents(io: Server, socket: Socket): void {
         }
       }
 
-      // Send updated class stats to host
-      const stats = computeClassStats(roomCode);
-      if (stats) {
-        io.to(hostSocket).emit(SERVER_EVENTS.CLASS_STATS, stats);
-      }
+      // Send updated class stats to host (throttled)
+      throttledClassStats(io, roomCode);
+
+      // Persist game state for crash recovery
+      persistGameState(rooms, gameStates);
     }
   });
 

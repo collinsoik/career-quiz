@@ -1,5 +1,6 @@
 import initSqlJs, { Database } from "sql.js";
 import fs from "fs";
+import { writeFile, rename } from "fs/promises";
 import path from "path";
 import type { InterestScores } from "@pathfinder/shared";
 
@@ -72,12 +73,14 @@ let persistTimer: ReturnType<typeof setTimeout> | null = null;
 function persistDb(): void {
   // Debounce writes — batch rapid operations into a single disk write
   if (persistTimer) return;
-  persistTimer = setTimeout(() => {
+  persistTimer = setTimeout(async () => {
     persistTimer = null;
     try {
       const data = db.export();
       const buffer = Buffer.from(data);
-      fs.writeFileSync(DB_PATH, buffer);
+      const tmpPath = DB_PATH + ".tmp";
+      await writeFile(tmpPath, buffer);
+      await rename(tmpPath, DB_PATH); // atomic rename
     } catch (err) {
       console.error("Failed to persist database:", err);
     }

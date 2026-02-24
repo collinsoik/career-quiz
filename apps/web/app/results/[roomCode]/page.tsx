@@ -32,12 +32,12 @@ export default function ResultsPage() {
       setResults(data);
     });
 
-    // If no results after 5 seconds, go home
+    // If no results after 15 seconds, go home
     const timeout = setTimeout(() => {
       if (!useGameStore.getState().results) {
         router.push("/");
       }
-    }, 5000);
+    }, 15000);
 
     return () => {
       socket.off(SERVER_EVENTS.PLAYER_RESULTS);

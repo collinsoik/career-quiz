@@ -23,4 +23,4 @@ RUN mkdir -p /app/data
 
 EXPOSE 3007
 
-CMD ["node", "apps/server/dist/index.js"]
+CMD ["node", "--max-old-space-size=384", "apps/server/dist/index.js"]

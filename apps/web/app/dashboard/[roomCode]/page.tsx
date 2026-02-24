@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { connectSocket, getSocket } from "@/lib/socket";
 import { useGameStore } from "@/lib/game-store";
@@ -27,6 +27,10 @@ export default function DashboardPage() {
   const [completedStudents, setCompletedStudents] = useState<CompletedStudent[]>([]);
   const [allCompleted, setAllCompleted] = useState(false);
 
+  // Throttle CLASS_STATS updates to avoid excessive re-renders with 60-80 students
+  const classStatsThrottleRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingStatsRef = useRef<ClassStats | null>(null);
+
   useEffect(() => {
     const socket = connectSocket();
 
@@ -40,7 +44,16 @@ export default function DashboardPage() {
     });
 
     socket.on(SERVER_EVENTS.CLASS_STATS, (stats: ClassStats) => {
-      setClassStats(stats);
+      pendingStatsRef.current = stats;
+      if (!classStatsThrottleRef.current) {
+        classStatsThrottleRef.current = setTimeout(() => {
+          classStatsThrottleRef.current = null;
+          if (pendingStatsRef.current) {
+            setClassStats(pendingStatsRef.current);
+            pendingStatsRef.current = null;
+          }
+        }, 1000);
+      }
     });
 
     socket.on(SERVER_EVENTS.PLAYER_COMPLETED, (data: CompletedStudent) => {
@@ -63,6 +76,10 @@ export default function DashboardPage() {
       socket.off(SERVER_EVENTS.CLASS_STATS);
       socket.off(SERVER_EVENTS.PLAYER_COMPLETED);
       socket.off(SERVER_EVENTS.GAME_ALL_COMPLETED);
+      if (classStatsThrottleRef.current) {
+        clearTimeout(classStatsThrottleRef.current);
+        classStatsThrottleRef.current = null;
+      }
     };
   }, [addFeedItem, setClassStats, setScenarios]);
 

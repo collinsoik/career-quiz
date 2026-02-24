@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import type { FeedItem } from "@pathfinder/shared";
 
 interface ClassFeedProps {
@@ -15,7 +15,7 @@ const TYPE_STYLES: Record<FeedItem["type"], { icon: string; color: string }> = {
   stat: { icon: "\u{1F4CA}", color: "text-accent-orange" },
 };
 
-export default function ClassFeed({ items }: ClassFeedProps) {
+function ClassFeed({ items }: ClassFeedProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,3 +63,5 @@ export default function ClassFeed({ items }: ClassFeedProps) {
     </div>
   );
 }
+
+export default React.memo(ClassFeed);
