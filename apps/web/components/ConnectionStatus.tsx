@@ -1,38 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getSocket } from "@/lib/socket";
+import { useEffect, useState, useRef } from "react";
+import { peekSocket } from "@/lib/socket";
 
 export default function ConnectionStatus() {
   const [status, setStatus] = useState<"connected" | "disconnected" | "reconnecting">("connected");
+  const hasConnectedRef = useRef(false);
 
   useEffect(() => {
-    const socket = getSocket();
-    if (!socket) return;
+    // Poll for socket existence — it may not exist yet on the landing page
+    const interval = setInterval(() => {
+      const socket = peekSocket();
+      if (!socket) return;
 
-    const onDisconnect = () => setStatus("disconnected");
-    const onReconnectAttempt = () => setStatus("reconnecting");
-    const onConnect = () => setStatus("connected");
+      // Once we find a socket, attach listeners and stop polling
+      clearInterval(interval);
 
-    socket.on("disconnect", onDisconnect);
-    socket.io.on("reconnect_attempt", onReconnectAttempt);
-    socket.on("connect", onConnect);
+      const onConnect = () => {
+        hasConnectedRef.current = true;
+        setStatus("connected");
+      };
+      const onDisconnect = () => {
+        // Only show banner if we successfully connected at least once
+        if (hasConnectedRef.current) {
+          setStatus("disconnected");
+        }
+      };
+      const onReconnectAttempt = () => {
+        if (hasConnectedRef.current) {
+          setStatus("reconnecting");
+        }
+      };
 
-    // Set initial status
-    setStatus(socket.connected ? "connected" : "disconnected");
+      socket.on("connect", onConnect);
+      socket.on("disconnect", onDisconnect);
+      socket.io.on("reconnect_attempt", onReconnectAttempt);
 
-    return () => {
-      socket.off("disconnect", onDisconnect);
-      socket.io.off("reconnect_attempt", onReconnectAttempt);
-      socket.off("connect", onConnect);
-    };
+      // If already connected when we find it
+      if (socket.connected) {
+        hasConnectedRef.current = true;
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
   }, []);
 
   if (status === "connected") return null;
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-50 px-4 py-2 text-center text-sm font-medium animate-in slide-in-from-top"
+      className="fixed top-0 left-0 right-0 z-50 px-4 py-2 text-center text-sm font-medium"
       style={{
         backgroundColor: status === "reconnecting" ? "#f59e0b" : "#ef4444",
         color: "white",
