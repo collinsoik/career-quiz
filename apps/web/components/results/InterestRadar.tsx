@@ -6,7 +6,7 @@ interface InterestRadarProps {
   profile: NormalizedProfile;
 }
 
-const SIZE = 300;
+const SIZE = 380;
 const CENTER = SIZE / 2;
 const RADIUS = 120;
 const LEVELS = 4;
@@ -111,18 +111,18 @@ export default function InterestRadar({ profile }: InterestRadarProps) {
                 textAnchor="middle"
                 dominantBaseline="middle"
                 className="fill-text-primary"
-                fontSize="11"
+                fontSize="14"
                 fontWeight="600"
               >
                 {cat.label}
               </text>
               <text
                 x={x}
-                y={y + 14}
+                y={y + 16}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                fontSize="10"
-                fontWeight="500"
+                fontSize="13"
+                fontWeight="600"
                 fill={cat.color}
               >
                 {value}

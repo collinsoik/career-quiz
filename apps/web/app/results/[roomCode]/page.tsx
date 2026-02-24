@@ -168,7 +168,7 @@ export default function ResultsPage() {
               const info = INTEREST_CATEGORIES.find((c) => c.key === cat.key);
               return (
                 <div key={cat.key} className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-text-primary w-28">
+                  <span className="text-sm font-medium text-text-primary w-32 shrink-0">
                     {cat.label}
                   </span>
                   <div className="flex-1 h-3 bg-surface-tertiary rounded-full overflow-hidden">
@@ -180,7 +180,7 @@ export default function ResultsPage() {
                       }}
                     />
                   </div>
-                  <span className="text-xs text-text-tertiary font-mono w-10 text-right">
+                  <span className="text-sm text-text-tertiary font-mono w-12 text-right">
                     {cat.score}%
                   </span>
                 </div>
