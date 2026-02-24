@@ -9,6 +9,7 @@ import { CLIENT_EVENTS, SERVER_EVENTS, INTEREST_CATEGORIES } from "@pathfinder/s
 import type { PlayerResults } from "@pathfinder/shared";
 import InterestRadar from "@/components/results/InterestRadar";
 import CareerCard from "@/components/results/CareerCard";
+import PostActivitySurvey from "@/components/survey/PostActivitySurvey";
 
 export default function ResultsPage() {
   const params = useParams();
@@ -18,13 +19,20 @@ export default function ResultsPage() {
   const { results, setResults } = useGameStore();
   const [shared, setShared] = useState(false);
   const [showCareers, setShowCareers] = useState(false);
+  const [showSurvey, setShowSurvey] = useState(false);
+  const [surveyDone, setSurveyDone] = useState(false);
 
   // Listen for results if we don't have them yet
   useEffect(() => {
     if (results) {
       // Stagger reveal: show careers after radar chart
       const timer = setTimeout(() => setShowCareers(true), 800);
-      return () => clearTimeout(timer);
+      // Show survey after careers appear
+      const surveyTimer = setTimeout(() => setShowSurvey(true), 1800);
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(surveyTimer);
+      };
     }
 
     const socket = getSocket();
@@ -157,6 +165,27 @@ export default function ResultsPage() {
               : "Your results are private by default."}
           </p>
         </div>
+
+        {/* Post-Activity Survey */}
+        {showSurvey && !surveyDone && (
+          <div className="mb-8 animate-slide-up">
+            <PostActivitySurvey
+              onComplete={(answers) => {
+                const socket = getSocket();
+                socket.emit(CLIENT_EVENTS.SURVEY_SUBMIT, answers);
+                setSurveyDone(true);
+              }}
+            />
+          </div>
+        )}
+
+        {surveyDone && (
+          <div className="card-elevated text-center mb-8 animate-survey-complete">
+            <p className="text-2xl mb-2">&#x1F389;</p>
+            <p className="text-sm font-semibold text-text-primary">Thanks for your feedback!</p>
+            <p className="text-xs text-text-tertiary mt-1">Your responses help us improve.</p>
+          </div>
+        )}
 
         {/* All Categories Breakdown */}
         <div className="card-elevated mb-8 animate-fade-in">

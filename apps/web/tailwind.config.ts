@@ -68,6 +68,9 @@ const config: Config = {
         "slide-in-right": "slideInRight 0.3s ease-out",
         "pulse-glow": "pulseGlow 2s ease-in-out infinite",
         "bounce-in": "bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)",
+        "survey-slide-in": "surveySlideIn 0.35s ease-out",
+        "survey-slide-back": "surveySlideBack 0.35s ease-out",
+        "survey-complete": "surveyComplete 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)",
       },
       keyframes: {
         fadeIn: {
@@ -88,6 +91,19 @@ const config: Config = {
         },
         bounceIn: {
           "0%": { opacity: "0", transform: "scale(0.3)" },
+          "50%": { transform: "scale(1.05)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        surveySlideIn: {
+          "0%": { opacity: "0", transform: "translateX(40px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        surveySlideBack: {
+          "0%": { opacity: "0", transform: "translateX(-40px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        surveyComplete: {
+          "0%": { opacity: "0", transform: "scale(0.8)" },
           "50%": { transform: "scale(1.05)" },
           "100%": { opacity: "1", transform: "scale(1)" },
         },

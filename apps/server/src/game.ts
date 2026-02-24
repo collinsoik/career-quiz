@@ -4,6 +4,7 @@ import {
   SERVER_EVENTS,
   ChoiceSubmitPayload,
   ResultsSharePayload,
+  SurveySubmitPayload,
   SCENARIOS,
   TOTAL_DECISIONS,
   FeedItem,
@@ -13,7 +14,7 @@ import {
 } from "@pathfinder/shared";
 import { getRoom, rooms } from "./rooms";
 import { calculateResults } from "./scoring";
-import { saveSession, saveChoice, savePlayerResult } from "./db";
+import { saveSession, saveChoice, savePlayerResult, saveSurveyResponse } from "./db";
 import { persistGameState } from "./state-recovery";
 
 // Per-room game state (kept separate from Room to avoid bloating broadcasts)
@@ -414,6 +415,33 @@ export function handleGameEvents(io: Server, socket: Socket): void {
         topCategory: results.topCategories[0]?.label || "?",
         results: results,
       });
+    }
+  });
+
+  // survey:submit — Player submits post-activity survey
+  socket.on(CLIENT_EVENTS.SURVEY_SUBMIT, (payload: SurveySubmitPayload) => {
+    const roomCode = (socket as any).roomCode;
+    const room = roomCode ? getRoom(roomCode) : undefined;
+    if (!room) return;
+
+    const gs = gameStates.get(roomCode);
+    if (!gs) return;
+
+    const player = room.players[socket.id];
+    if (!player || player.isHost) return;
+
+    try {
+      saveSurveyResponse(
+        gs.sessionId,
+        socket.id,
+        player.displayName,
+        payload.enjoyment ?? null,
+        payload.learned ?? null,
+        payload.wouldExplore ?? null,
+        payload.overall ?? null
+      );
+    } catch (err) {
+      console.error("Failed to save survey response:", err);
     }
   });
 }

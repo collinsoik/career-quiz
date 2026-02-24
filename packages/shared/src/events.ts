@@ -10,6 +10,7 @@ export const CLIENT_EVENTS = {
   GAME_START: "game:start",
   CHOICE_SUBMIT: "choice:submit",
   RESULTS_SHARE: "results:share",
+  SURVEY_SUBMIT: "survey:submit",
 } as const;
 
 // Server -> Client Events
@@ -41,6 +42,13 @@ export interface ChoiceSubmitPayload {
 
 export interface ResultsSharePayload {
   share: boolean;
+}
+
+export interface SurveySubmitPayload {
+  enjoyment: number | null;
+  learned: string | null;
+  wouldExplore: string | null;
+  overall: number | null;
 }
 
 // Server payloads

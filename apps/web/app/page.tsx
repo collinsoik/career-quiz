@@ -48,10 +48,9 @@ export default function LandingPage() {
         </p>
       </div>
 
-      {/* Action Cards */}
-      <div className="flex flex-col md:flex-row gap-8 w-full max-w-3xl relative z-10">
-        {/* JOIN Card */}
-        <div className="flex-1 card-elevated">
+      {/* Join Card */}
+      <div className="w-full max-w-sm relative z-10">
+        <div className="card-elevated">
           <h2 className="text-lg font-semibold text-text-primary mb-6 text-center">
             Join Session
           </h2>
@@ -91,25 +90,6 @@ export default function LandingPage() {
               {isJoining ? "Joining..." : "Join"}
             </button>
           </form>
-        </div>
-
-        {/* Divider */}
-        <div className="flex items-center justify-center">
-          <span className="text-sm text-text-tertiary font-medium">or</span>
-        </div>
-
-        {/* HOST Card */}
-        <div className="flex-1 card-elevated flex flex-col items-center justify-center min-h-[300px]">
-          <h2 className="text-lg font-semibold text-text-primary mb-4 text-center">
-            Host Session
-          </h2>
-          <p className="text-text-secondary text-sm text-center mb-8 leading-relaxed max-w-xs">
-            Create a room for your class. Students will play through fun scenarios while you watch
-            a live dashboard.
-          </p>
-          <Link href="/host" className="btn-green text-center px-8">
-            Create Room
-          </Link>
         </div>
       </div>
 

@@ -65,6 +65,21 @@ export async function initDb(): Promise<void> {
     );
   `);
 
+  // Post-activity survey responses
+  db.run(`
+    CREATE TABLE IF NOT EXISTS survey_responses (
+      id TEXT PRIMARY KEY,
+      session_id TEXT REFERENCES sessions(id),
+      player_id TEXT,
+      display_name TEXT,
+      enjoyment INTEGER,
+      learned TEXT,
+      would_explore TEXT,
+      overall INTEGER,
+      submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
   persistDb();
 }
 
@@ -152,6 +167,35 @@ export function saveChoice(
   db.run(
     "INSERT OR REPLACE INTO choices (id, session_id, player_id, decision_id, choice_id, submitted_at) VALUES (?, ?, ?, ?, ?, ?)",
     [id, sessionId, playerId, decisionId, choiceId, new Date().toISOString()]
+  );
+  persistDb();
+}
+
+export function saveSurveyResponse(
+  sessionId: string,
+  playerId: string,
+  displayName: string,
+  enjoyment: number | null,
+  learned: string | null,
+  wouldExplore: string | null,
+  overall: number | null
+): void {
+  const id = `${sessionId}-${playerId}-survey`;
+  db.run(
+    `INSERT OR REPLACE INTO survey_responses
+      (id, session_id, player_id, display_name, enjoyment, learned, would_explore, overall, submitted_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      sessionId,
+      playerId,
+      displayName,
+      enjoyment,
+      learned,
+      wouldExplore,
+      overall,
+      new Date().toISOString(),
+    ]
   );
   persistDb();
 }
