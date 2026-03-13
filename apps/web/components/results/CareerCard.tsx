@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { Career } from "@pathfinder/shared";
 
 interface CareerCardProps {
@@ -9,8 +10,9 @@ interface CareerCardProps {
 
 export default function CareerCard({ career, rank }: CareerCardProps) {
   return (
-    <div
-      className="card flex items-start gap-4 animate-slide-in-right"
+    <Link
+      href={`/explore/${career.clusterId}/${career.id}`}
+      className="card flex items-start gap-4 animate-slide-in-right hover:ring-2 hover:ring-accent/40 transition-shadow cursor-pointer"
       style={{ animationDelay: `${rank * 100}ms` }}
     >
       {/* Rank */}
@@ -39,6 +41,6 @@ export default function CareerCard({ career, rank }: CareerCardProps) {
           </span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
