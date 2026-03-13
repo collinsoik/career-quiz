@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { CAREER_CLUSTERS } from "@pathfinder/shared";
+import { CAREER_CLUSTERS, CAREER_CONTENT } from "@pathfinder/shared";
 
 export default function CareerDetailPage() {
   const params = useParams();
@@ -165,6 +165,88 @@ export default function CareerDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Rich Content Sections */}
+        {(() => {
+          const content = CAREER_CONTENT[career.id];
+          if (!content) return null;
+          return (
+            <>
+              {content.typicalDay && (
+                <div className="card-elevated mb-6">
+                  <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
+                    A Day in the Life
+                  </h2>
+                  <p className="text-text-primary leading-relaxed">{content.typicalDay}</p>
+                </div>
+              )}
+
+              {content.realWorldImpact && (
+                <div className="card-elevated mb-6">
+                  <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
+                    Why It Matters
+                  </h2>
+                  <p className="text-text-primary leading-relaxed">{content.realWorldImpact}</p>
+                </div>
+              )}
+
+              {content.skills && (
+                <div className="card-elevated mb-6">
+                  <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">
+                    Skills You'd Build
+                  </h2>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-text-tertiary uppercase tracking-wider mb-2">Technical</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {content.skills.technical.map((skill) => (
+                          <span
+                            key={skill}
+                            className="text-xs px-2.5 py-1 rounded-full font-medium"
+                            style={{ backgroundColor: cluster.color + "18", color: cluster.color }}
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-text-tertiary uppercase tracking-wider mb-2">Soft Skills</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {content.skills.soft.map((skill) => (
+                          <span
+                            key={skill}
+                            className="text-xs px-2.5 py-1 rounded-full font-medium bg-surface-tertiary text-text-secondary"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {content.whereYoudWork && (
+                <div className="card-elevated mb-8">
+                  <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
+                    Where You'd Work
+                  </h2>
+                  <div className="flex flex-wrap gap-2">
+                    {content.whereYoudWork.map((place) => (
+                      <span
+                        key={place}
+                        className="text-sm text-text-secondary bg-surface-secondary px-3 py-1.5 rounded-lg"
+                      >
+                        {place}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {/* Navigation */}
         <div className="flex justify-between items-center pb-8">

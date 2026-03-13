@@ -61,6 +61,10 @@ export interface CareerEntry {
   salaryRange: { entry: number; experienced: number };
   growth: "high" | "moderate" | "stable" | "declining";
   education: string;
+  typicalDay?: string;
+  realWorldImpact?: string;
+  skills?: { technical: string[]; soft: string[] };
+  whereYoudWork?: string[];
 }
 
 export interface Pathway {
