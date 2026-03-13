@@ -1,52 +1,31 @@
 // ==========================================
 // Core Types for Pathfinder
-// Interactive STEM Major Exploration Game
+// Interactive Career Exploration Game
 // ==========================================
 
-export interface Player {
-  id: string;
-  displayName: string;
-  isHost: boolean;
-  connected: boolean;
-  // Game progress
-  currentScenario: number; // index into scenarios array
-  currentDecision: number; // index within current scenario
-  completed: boolean;
-  // Interest scores (accumulated during play)
-  scores: InterestScores;
-}
-
 export interface InterestScores {
-  healthBiomedical: number;   // Health-tech, genetics, molecular biology
-  lifeEcology: number;        // Living systems, fieldwork, wildlife
-  computing: number;           // Code, data, digital systems
-  chemistryMaterials: number;  // Matter, molecules, materials
-  designBuild: number;         // Designing and building physical things
-  earthEnergy: number;         // Planet-scale systems, energy, climate
+  healthHelping: number;      // Healthcare, education, helping others
+  scienceDiscovery: number;   // Research, experiments, understanding the world
+  techComputing: number;      // Code, data, digital innovation
+  engineeringDesign: number;  // Design, build & improve systems
+  buildingMaking: number;     // Hands-on work, trades & manufacturing
+  creativeExpression: number; // Art, music, writing & media
+  businessLeadership: number; // Management, finance & entrepreneurship
+  justiceCommunity: number;   // Law, public service & community
 }
 
 export type InterestCategory = keyof InterestScores;
 
 export const INTEREST_CATEGORIES: { key: InterestCategory; label: string; description: string; color: string }[] = [
-  { key: "healthBiomedical", label: "Health & Biomedical", description: "Health-tech, genetics & molecular biology", color: "#EC4899" },
-  { key: "lifeEcology", label: "Life & Ecology", description: "Living systems, fieldwork & wildlife", color: "#22C55E" },
-  { key: "computing", label: "Computing & Software", description: "Code, data & digital systems", color: "#3B82F6" },
-  { key: "chemistryMaterials", label: "Chemistry & Materials", description: "Matter, molecules & materials", color: "#F97316" },
-  { key: "designBuild", label: "Design & Build", description: "Designing & building physical things", color: "#A855F7" },
-  { key: "earthEnergy", label: "Earth & Energy", description: "Planet-scale systems, energy & climate", color: "#EAB308" },
+  { key: "healthHelping", label: "Health & Helping", description: "Healthcare, education & helping others", color: "#EC4899" },
+  { key: "scienceDiscovery", label: "Science & Discovery", description: "Research, experiments & understanding the world", color: "#8B5CF6" },
+  { key: "techComputing", label: "Tech & Computing", description: "Code, data & digital innovation", color: "#3B82F6" },
+  { key: "engineeringDesign", label: "Engineering & Design", description: "Design, build & improve systems", color: "#F59E0B" },
+  { key: "buildingMaking", label: "Building & Making", description: "Hands-on work, trades & manufacturing", color: "#F97316" },
+  { key: "creativeExpression", label: "Creative & Expressive", description: "Art, music, writing & media", color: "#E91E63" },
+  { key: "businessLeadership", label: "Business & Leadership", description: "Management, finance & entrepreneurship", color: "#22C55E" },
+  { key: "justiceCommunity", label: "Justice & Community", description: "Law, public service & community work", color: "#64748B" },
 ];
-
-// ── Room & Game State ─────────────────────
-
-export interface Room {
-  code: string;
-  hostId: string;
-  players: Record<string, Player>;
-  phase: GamePhase;
-  createdAt: number;
-}
-
-export type GamePhase = "lobby" | "playing" | "results";
 
 // ── Scenario & Decision Types ─────────────
 
@@ -72,72 +51,105 @@ export interface Scenario {
   decisions: Decision[];
 }
 
-// Client-safe version (weights stripped)
-export interface ClientChoice {
-  id: string;
-  text: string;
-}
+// ── Career Tree ─────────────────────────
 
-export interface ClientDecision {
-  id: string;
-  prompt: string;
-  context?: string;
-  choices: ClientChoice[];
-}
-
-export interface ClientScenario {
+export interface CareerEntry {
   id: string;
   title: string;
-  icon: string;
-  description: string;
-  narrative: string;
-  decisions: ClientDecision[];
+  hook: string;
+  emoji: string;
+  salaryRange: { entry: number; experienced: number };
+  growth: "high" | "moderate" | "stable" | "declining";
+  education: string;
 }
 
-// ── Career Matching ───────────────────────
+export interface Pathway {
+  id: string;
+  name: string;
+  careers: CareerEntry[];
+}
+
+export interface CareerCluster {
+  id: string;
+  name: string;
+  emoji: string;
+  color: string;
+  description: string;
+  pathways: Pathway[];
+}
+
+// ── Career Matching (for results) ───────
 
 export interface Career {
   id: string;
   title: string;
   description: string;
   icon: string;
-  primaryCategory: InterestCategory;
-  secondaryCategory: InterestCategory;
+  clusterId: string;
+  clusterName: string;
+  clusterColor: string;
 }
 
 // ── Results ───────────────────────────────
 
 export interface NormalizedProfile {
-  healthBiomedical: number;   // 0-100
-  lifeEcology: number;
-  computing: number;
-  chemistryMaterials: number;
-  designBuild: number;
-  earthEnergy: number;
+  healthHelping: number;      // 0-100
+  scienceDiscovery: number;
+  techComputing: number;
+  engineeringDesign: number;
+  buildingMaking: number;
+  creativeExpression: number;
+  businessLeadership: number;
+  justiceCommunity: number;
 }
 
 export interface PlayerResults {
-  playerId: string;
   displayName: string;
   profile: NormalizedProfile;
   topCategories: { key: InterestCategory; label: string; score: number }[];
   careers: Career[];
-  sharedWithTeacher: boolean;
 }
 
-// ── Feed Items (teacher dashboard) ────────
+// ── Results Lobby ─────────────────────────
 
-export interface FeedItem {
-  id: string;
-  type: "join" | "choice" | "milestone" | "completion" | "stat";
-  text: string;
-  timestamp: number;
+export interface SubmittedResult {
+  displayName: string;
+  profile: NormalizedProfile;
+  topCategories: { key: InterestCategory; label: string; score: number }[];
+  careers: Career[];
+  surveyAnswers?: SurveyAnswers | null;
+  submittedAt: number;
 }
 
-export interface ClassStats {
-  totalPlayers: number;
-  completedPlayers: number;
-  averageProgress: number; // 0-100
-  categoryDistribution: Record<InterestCategory, number>; // count of players with this as top
-  popularChoices: { decisionId: string; choiceId: string; choiceText: string; count: number }[];
+export interface SurveyAnswers {
+  enjoyment: number | null;
+  learned: string | null;
+  wouldExplore: string | null;
+  overall: number | null;
 }
+
+export interface ResultsLobby {
+  code: string;
+  hostId: string;
+  submissions: SubmittedResult[];
+  createdAt: number;
+}
+
+// ── Cluster-to-Dimension Mapping ─────────
+
+export const CLUSTER_DIMENSION_MAP: Record<string, InterestCategory[]> = {
+  tech: ["techComputing"],
+  health: ["healthHelping"],
+  engineering: ["engineeringDesign"],
+  science: ["scienceDiscovery"],
+  creative: ["creativeExpression"],
+  business: ["businessLeadership"],
+  trades: ["buildingMaking"],
+  law: ["justiceCommunity"],
+  education: ["healthHelping"],
+  "health-human": ["healthHelping"],
+  agriculture: ["justiceCommunity"],
+  hospitality: ["businessLeadership"],
+  communications: ["creativeExpression"],
+  manufacturing: ["buildingMaking"],
+};

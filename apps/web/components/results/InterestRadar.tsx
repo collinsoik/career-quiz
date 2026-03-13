@@ -6,15 +6,15 @@ interface InterestRadarProps {
   profile: NormalizedProfile;
 }
 
-const SIZE = 380;
+const SIZE = 440;
 const CENTER = SIZE / 2;
-const RADIUS = 120;
+const RADIUS = 140;
 const LEVELS = 4;
 
-// Hexagonal radar chart using pure SVG
+// Octagonal radar chart using pure SVG
 export default function InterestRadar({ profile }: InterestRadarProps) {
   const categories = INTEREST_CATEGORIES;
-  const n = categories.length; // 6
+  const n = categories.length; // 8
 
   // Get point on the radar for a given category index and value (0-100)
   function getPoint(index: number, value: number): [number, number] {
@@ -101,7 +101,7 @@ export default function InterestRadar({ profile }: InterestRadarProps) {
 
         {/* Labels */}
         {categories.map((cat, i) => {
-          const [x, y] = getPoint(i, 130);
+          const [x, y] = getPoint(i, 128);
           const value = profile[cat.key as InterestCategory];
           return (
             <g key={cat.key}>
@@ -111,17 +111,17 @@ export default function InterestRadar({ profile }: InterestRadarProps) {
                 textAnchor="middle"
                 dominantBaseline="middle"
                 className="fill-text-primary"
-                fontSize="14"
+                fontSize="12"
                 fontWeight="600"
               >
                 {cat.label}
               </text>
               <text
                 x={x}
-                y={y + 16}
+                y={y + 15}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                fontSize="13"
+                fontSize="12"
                 fontWeight="600"
                 fill={cat.color}
               >

@@ -21,6 +21,7 @@ const CLIENT_EVENTS = {
   ROOM_JOIN: "room:join",
   GAME_START: "game:start",
   CHOICE_SUBMIT: "choice:submit",
+  SURVEY_SUBMIT: "survey:submit",
 };
 const SERVER_EVENTS = {
   ROOM_STATE: "room:state",
@@ -39,6 +40,7 @@ const stats = {
   choicesFailed: 0,
   completed: 0,
   resultsReceived: 0,
+  surveysSubmitted: 0,
   disconnects: 0,
   reconnects: 0,
   errors: [],
@@ -70,6 +72,7 @@ function printStats() {
   console.log(`  Choices failed:    ${stats.choicesFailed}`);
   console.log(`  Completed quiz:    ${stats.completed}`);
   console.log(`  Results received:  ${stats.resultsReceived}`);
+  console.log(`  Surveys submitted: ${stats.surveysSubmitted}`);
   console.log(`  Disconnects:       ${stats.disconnects}`);
   console.log(`  Reconnects:        ${stats.reconnects}`);
   console.log(`  Errors:            ${stats.errors.length}`);
@@ -88,6 +91,7 @@ function printStats() {
     stats.joined === NUM_STUDENTS &&
     stats.completed === NUM_STUDENTS &&
     stats.resultsReceived === NUM_STUDENTS &&
+    stats.surveysSubmitted === NUM_STUDENTS &&
     stats.choicesFailed === 0 &&
     stats.errors.length === 0;
 
@@ -262,10 +266,26 @@ async function simulateStudent(roomCode, studentIndex, scenarios) {
     });
 
     // Listen for results
-    socket.on(SERVER_EVENTS.PLAYER_RESULTS, (results) => {
+    socket.on(SERVER_EVENTS.PLAYER_RESULTS, async (results) => {
       stats.resultsReceived++;
       clearTimeout(timeout);
       log(`${name} finished! Top: ${results.topCategories?.[0]?.label || "?"}`);
+
+      // Submit survey after a short delay (simulates user filling it out)
+      await sleep(200 + Math.random() * 800);
+      const enjoymentOptions = [1, 2, 3, 4, 5];
+      const learnedOptions = ["Yes!", "Maybe", "Not really"];
+      const exploreOptions = ["Definitely", "Maybe some", "Probably not"];
+      socket.emit(CLIENT_EVENTS.SURVEY_SUBMIT, {
+        enjoyment: enjoymentOptions[Math.floor(Math.random() * enjoymentOptions.length)],
+        learned: learnedOptions[Math.floor(Math.random() * learnedOptions.length)],
+        wouldExplore: exploreOptions[Math.floor(Math.random() * exploreOptions.length)],
+        overall: enjoymentOptions[Math.floor(Math.random() * enjoymentOptions.length)],
+      });
+      stats.surveysSubmitted++;
+
+      // Small delay to let the emit flush before disconnecting
+      await sleep(100);
       finish();
     });
   });

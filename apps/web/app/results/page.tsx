@@ -1,57 +1,50 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { getSocket } from "@/lib/socket";
+import { useRouter } from "next/navigation";
 import { useGameStore } from "@/lib/game-store";
+import { connectSocket, disconnectSocket } from "@/lib/socket";
 import Link from "next/link";
 import { CLIENT_EVENTS, SERVER_EVENTS, INTEREST_CATEGORIES } from "@pathfinder/shared";
-import type { PlayerResults } from "@pathfinder/shared";
+import type { SurveyAnswers } from "@pathfinder/shared";
 import InterestRadar from "@/components/results/InterestRadar";
 import CareerCard from "@/components/results/CareerCard";
 import PostActivitySurvey from "@/components/survey/PostActivitySurvey";
 
 export default function ResultsPage() {
-  const params = useParams();
   const router = useRouter();
-  const roomCode = params.roomCode as string;
 
-  const { results, setResults } = useGameStore();
-  const [shared, setShared] = useState(false);
+  const { results, playerName } = useGameStore();
   const [showCareers, setShowCareers] = useState(false);
   const [showSurvey, setShowSurvey] = useState(false);
   const [surveyDone, setSurveyDone] = useState(false);
+  const [surveyAnswers, setSurveyAnswers] = useState<SurveyAnswers | null>(null);
 
-  // Listen for results if we don't have them yet
+  // Submit to teacher state
+  const [lobbyCode, setLobbyCode] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Redirect home if no results
   useEffect(() => {
-    if (results) {
-      // Stagger reveal: show careers after radar chart
-      const timer = setTimeout(() => setShowCareers(true), 800);
-      // Show survey after careers appear
-      const surveyTimer = setTimeout(() => setShowSurvey(true), 1800);
-      return () => {
-        clearTimeout(timer);
-        clearTimeout(surveyTimer);
-      };
+    if (!results) {
+      // Try recalculating if we have a name in session
+      const saved = typeof window !== "undefined" ? sessionStorage.getItem("pathfinder-name") : null;
+      if (!saved) {
+        router.push("/");
+        return;
+      }
     }
 
-    const socket = getSocket();
-    socket.on(SERVER_EVENTS.PLAYER_RESULTS, (data: PlayerResults) => {
-      setResults(data);
-    });
-
-    // If no results after 15 seconds, go home
-    const timeout = setTimeout(() => {
-      if (!useGameStore.getState().results) {
-        router.push("/");
-      }
-    }, 15000);
-
+    // Stagger reveal
+    const timer = setTimeout(() => setShowCareers(true), 800);
+    const surveyTimer = setTimeout(() => setShowSurvey(true), 1800);
     return () => {
-      socket.off(SERVER_EVENTS.PLAYER_RESULTS);
-      clearTimeout(timeout);
+      clearTimeout(timer);
+      clearTimeout(surveyTimer);
     };
-  }, [results, setResults, router]);
+  }, [results, router]);
 
   if (!results) {
     return (
@@ -61,11 +54,66 @@ export default function ResultsPage() {
     );
   }
 
-  function handleShare() {
-    const socket = getSocket();
-    const newShared = !shared;
-    setShared(newShared);
-    socket.emit(CLIENT_EVENTS.RESULTS_SHARE, { share: newShared });
+  function handleLobbyCodeChange(value: string) {
+    const cleaned = value.replace(/[^0-9]/g, "");
+    if (cleaned.length <= 4) {
+      setLobbyCode(cleaned);
+    }
+    setSubmitError(null);
+  }
+
+  function handleSubmitToTeacher() {
+    if (lobbyCode.length !== 4 || !results || isSubmitting) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    const socket = connectSocket();
+
+    const timeout = setTimeout(() => {
+      setSubmitError("Could not connect to server. Please try again.");
+      setIsSubmitting(false);
+      disconnectSocket();
+    }, 8000);
+
+    const onConnectError = (err: Error) => {
+      clearTimeout(timeout);
+      setSubmitError(`Connection failed: ${err.message}`);
+      setIsSubmitting(false);
+      socket.off("connect_error", onConnectError);
+    };
+    socket.on("connect_error", onConnectError);
+
+    // Wait for connection then submit
+    const doSubmit = () => {
+      socket.off("connect_error", onConnectError);
+      socket.emit(
+        CLIENT_EVENTS.RESULTS_SUBMIT,
+        {
+          lobbyCode: lobbyCode.trim(),
+          displayName: results.displayName,
+          profile: results.profile,
+          topCategories: results.topCategories,
+          careers: results.careers,
+          surveyAnswers: surveyAnswers,
+        },
+        (response: { success: boolean; error?: string }) => {
+          clearTimeout(timeout);
+          if (response.success) {
+            setSubmitSuccess(true);
+          } else {
+            setSubmitError(response.error || "Failed to submit results");
+          }
+          setIsSubmitting(false);
+          disconnectSocket();
+        }
+      );
+    };
+
+    if (socket.connected) {
+      doSubmit();
+    } else {
+      socket.once("connect", doSubmit);
+    }
   }
 
   const topCategory = results.topCategories[0];
@@ -143,36 +191,17 @@ export default function ResultsPage() {
               Want to explore more?
             </p>
             <Link href="/explore" className="btn-ghost text-sm">
-              Browse All 24 STEM Majors →
+              Explore All Career Paths →
             </Link>
           </div>
         )}
-
-        {/* Share Controls */}
-        <div className="card-elevated text-center mb-8 animate-fade-in">
-          <p className="text-sm text-text-secondary mb-4">
-            Want to share your results with your teacher?
-          </p>
-          <button
-            onClick={handleShare}
-            className={shared ? "btn-ghost" : "btn-primary"}
-          >
-            {shared ? "Shared with Teacher" : "Share with Teacher"}
-          </button>
-          <p className="text-xs text-text-disabled mt-3">
-            {shared
-              ? "Your teacher can see your results. Click to unshare."
-              : "Your results are private by default."}
-          </p>
-        </div>
 
         {/* Post-Activity Survey */}
         {showSurvey && !surveyDone && (
           <div className="mb-8 animate-slide-up">
             <PostActivitySurvey
               onComplete={(answers) => {
-                const socket = getSocket();
-                socket.emit(CLIENT_EVENTS.SURVEY_SUBMIT, answers);
+                setSurveyAnswers(answers);
                 setSurveyDone(true);
               }}
             />
@@ -186,6 +215,51 @@ export default function ResultsPage() {
             <p className="text-xs text-text-tertiary mt-1">Your responses help us improve.</p>
           </div>
         )}
+
+        {/* Submit to Teacher */}
+        <div className="card-elevated text-center mb-8 animate-fade-in">
+          {submitSuccess ? (
+            <>
+              <p className="text-2xl mb-2">&#x2705;</p>
+              <p className="text-sm font-semibold text-text-primary">
+                Results submitted to your teacher!
+              </p>
+              <p className="text-xs text-text-tertiary mt-1">
+                They can now see your results on their dashboard.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-text-secondary mb-4">
+                Has your teacher shared a lobby code? Submit your results so they can see them.
+              </p>
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={lobbyCode}
+                  onChange={(e) => handleLobbyCodeChange(e.target.value)}
+                  placeholder="1234"
+                  maxLength={4}
+                  className="input font-mono tracking-[0.3em] text-center text-xl w-32"
+                />
+                <button
+                  onClick={handleSubmitToTeacher}
+                  disabled={lobbyCode.length !== 4 || isSubmitting}
+                  className="btn-primary"
+                >
+                  {isSubmitting ? "Submitting..." : "Submit"}
+                </button>
+              </div>
+              {submitError && (
+                <p className="text-xs text-accent-red mt-2">{submitError}</p>
+              )}
+              <p className="text-xs text-text-disabled mt-3">
+                Your results are private unless you choose to submit them.
+              </p>
+            </>
+          )}
+        </div>
 
         {/* All Categories Breakdown */}
         <div className="card-elevated mb-8 animate-fade-in">

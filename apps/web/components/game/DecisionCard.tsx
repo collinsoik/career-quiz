@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { ClientDecision } from "@pathfinder/shared";
+import type { Decision } from "@pathfinder/shared";
 
 interface DecisionCardProps {
-  decision: ClientDecision;
+  decision: Decision;
   scenarioTitle: string;
   decisionNumber: number;
   totalDecisions: number;

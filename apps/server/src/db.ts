@@ -2,7 +2,7 @@ import initSqlJs, { Database } from "sql.js";
 import fs from "fs";
 import { writeFile, rename } from "fs/promises";
 import path from "path";
-import type { InterestScores } from "@pathfinder/shared";
+import type { SubmittedResult, SurveyAnswers } from "@pathfinder/shared";
 
 const DB_PATH =
   process.env.DB_PATH || path.join(__dirname, "..", "data", "pathfinder.db");
@@ -17,60 +17,59 @@ export async function initDb(): Promise<void> {
 
   const SQL = await initSqlJs();
 
+  // Delete old DB to start fresh with new schema
   if (fs.existsSync(DB_PATH)) {
     const buffer = fs.readFileSync(DB_PATH);
-    db = new SQL.Database(buffer);
+    const oldDb = new SQL.Database(buffer);
+    // Check if old schema (has health_biomedical_score column)
+    try {
+      oldDb.exec("SELECT health_biomedical_score FROM player_results LIMIT 0");
+      // Old schema detected — start fresh
+      oldDb.close();
+      fs.unlinkSync(DB_PATH);
+      db = new SQL.Database();
+    } catch {
+      // New schema or no table yet — reuse
+      db = oldDb;
+    }
   } else {
     db = new SQL.Database();
   }
 
-  // Sessions table — one per room
+  // Sessions table — one per lobby
   db.run(`
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
       room_code TEXT,
-      player_count INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       ended_at DATETIME
     );
   `);
 
-  // Player results — one per player per session
+  // Player results — one per submitted student per session (8 dimensions)
   db.run(`
     CREATE TABLE IF NOT EXISTS player_results (
-      id TEXT PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id TEXT REFERENCES sessions(id),
       display_name TEXT,
-      health_biomedical_score REAL DEFAULT 0,
-      life_ecology_score REAL DEFAULT 0,
-      computing_score REAL DEFAULT 0,
-      chemistry_materials_score REAL DEFAULT 0,
-      design_build_score REAL DEFAULT 0,
-      earth_energy_score REAL DEFAULT 0,
+      health_helping_score REAL DEFAULT 0,
+      science_discovery_score REAL DEFAULT 0,
+      tech_computing_score REAL DEFAULT 0,
+      engineering_design_score REAL DEFAULT 0,
+      building_making_score REAL DEFAULT 0,
+      creative_expression_score REAL DEFAULT 0,
+      business_leadership_score REAL DEFAULT 0,
+      justice_community_score REAL DEFAULT 0,
       top_careers TEXT,
-      shared_with_teacher INTEGER DEFAULT 0,
-      completed_at DATETIME
-    );
-  `);
-
-  // Individual choices — for class stats
-  db.run(`
-    CREATE TABLE IF NOT EXISTS choices (
-      id TEXT PRIMARY KEY,
-      session_id TEXT REFERENCES sessions(id),
-      player_id TEXT,
-      decision_id TEXT,
-      choice_id TEXT,
-      submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      submitted_at DATETIME
     );
   `);
 
   // Post-activity survey responses
   db.run(`
     CREATE TABLE IF NOT EXISTS survey_responses (
-      id TEXT PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id TEXT REFERENCES sessions(id),
-      player_id TEXT,
       display_name TEXT,
       enjoyment INTEGER,
       learned TEXT,
@@ -117,83 +116,58 @@ export function flushDb(): void {
   }
 }
 
-export function saveSession(roomCode: string, playerCount: number): string {
-  const sessionId = `session-${roomCode}-${Date.now()}`;
+export function saveSession(roomCode: string): string {
+  const sessionId = `session-${roomCode}`;
   db.run(
-    "INSERT INTO sessions (id, room_code, player_count, created_at) VALUES (?, ?, ?, ?)",
-    [sessionId, roomCode, playerCount, new Date().toISOString()]
+    "INSERT OR IGNORE INTO sessions (id, room_code, created_at) VALUES (?, ?, ?)",
+    [sessionId, roomCode, new Date().toISOString()]
   );
   persistDb();
   return sessionId;
 }
 
-export function savePlayerResult(
+export function saveLobbySubmission(
   sessionId: string,
-  playerId: string,
-  displayName: string,
-  scores: InterestScores,
-  topCareers: string[],
-  sharedWithTeacher: boolean
+  submission: SubmittedResult
 ): void {
   db.run(
-    `INSERT OR REPLACE INTO player_results
-      (id, session_id, display_name, health_biomedical_score, life_ecology_score, computing_score, chemistry_materials_score, design_build_score, earth_energy_score, top_careers, shared_with_teacher, completed_at)
+    `INSERT INTO player_results
+      (session_id, display_name, health_helping_score, science_discovery_score, tech_computing_score, engineering_design_score, building_making_score, creative_expression_score, business_leadership_score, justice_community_score, top_careers, submitted_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      `${sessionId}-${playerId}`,
       sessionId,
-      displayName,
-      scores.healthBiomedical || 0,
-      scores.lifeEcology || 0,
-      scores.computing || 0,
-      scores.chemistryMaterials || 0,
-      scores.designBuild || 0,
-      scores.earthEnergy || 0,
-      JSON.stringify(topCareers),
-      sharedWithTeacher ? 1 : 0,
+      submission.displayName,
+      submission.profile.healthHelping || 0,
+      submission.profile.scienceDiscovery || 0,
+      submission.profile.techComputing || 0,
+      submission.profile.engineeringDesign || 0,
+      submission.profile.buildingMaking || 0,
+      submission.profile.creativeExpression || 0,
+      submission.profile.businessLeadership || 0,
+      submission.profile.justiceCommunity || 0,
+      JSON.stringify(submission.careers.map((c) => c.title)),
       new Date().toISOString(),
     ]
   );
   persistDb();
 }
 
-export function saveChoice(
-  sessionId: string,
-  playerId: string,
-  decisionId: string,
-  choiceId: string
-): void {
-  const id = `${sessionId}-${playerId}-${decisionId}`;
-  db.run(
-    "INSERT OR REPLACE INTO choices (id, session_id, player_id, decision_id, choice_id, submitted_at) VALUES (?, ?, ?, ?, ?, ?)",
-    [id, sessionId, playerId, decisionId, choiceId, new Date().toISOString()]
-  );
-  persistDb();
-}
-
 export function saveSurveyResponse(
   sessionId: string,
-  playerId: string,
   displayName: string,
-  enjoyment: number | null,
-  learned: string | null,
-  wouldExplore: string | null,
-  overall: number | null
+  answers: SurveyAnswers
 ): void {
-  const id = `${sessionId}-${playerId}-survey`;
   db.run(
-    `INSERT OR REPLACE INTO survey_responses
-      (id, session_id, player_id, display_name, enjoyment, learned, would_explore, overall, submitted_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO survey_responses
+      (session_id, display_name, enjoyment, learned, would_explore, overall, submitted_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
-      id,
       sessionId,
-      playerId,
       displayName,
-      enjoyment,
-      learned,
-      wouldExplore,
-      overall,
+      answers.enjoyment,
+      answers.learned,
+      answers.wouldExplore,
+      answers.overall,
       new Date().toISOString(),
     ]
   );

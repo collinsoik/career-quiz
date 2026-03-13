@@ -4,17 +4,14 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { connectSocket, disconnectSocket } from "@/lib/socket";
-import { useGameStore } from "@/lib/game-store";
-import { CLIENT_EVENTS } from "@pathfinder/shared";
+import { CLIENT_EVENTS, SERVER_EVENTS } from "@pathfinder/shared";
 
 export default function TeacherPage() {
   const router = useRouter();
-  const { setRoom, setPlayerId } = useGameStore();
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    useGameStore.getState().reset();
     disconnectSocket();
   }, []);
 
@@ -37,22 +34,28 @@ export default function TeacherPage() {
     };
     socket.on("connect_error", onConnectError);
 
-    socket.emit(
-      CLIENT_EVENTS.ROOM_CREATE,
-      {},
-      (response: { success: boolean; roomCode?: string; room?: any; error?: string }) => {
-        clearTimeout(timeout);
-        socket.off("connect_error", onConnectError);
-        if (response.success && response.roomCode) {
-          setRoom(response.room);
-          setPlayerId(socket.id!);
-          router.push(`/lobby/${response.roomCode}`);
-        } else {
-          setError(response.error || "Failed to create room");
-          setIsCreating(false);
+    const doCreate = () => {
+      socket.off("connect_error", onConnectError);
+      socket.emit(
+        CLIENT_EVENTS.LOBBY_CREATE,
+        {},
+        (response: { success: boolean; code?: string; error?: string }) => {
+          clearTimeout(timeout);
+          if (response.success && response.code) {
+            router.push(`/dashboard/${response.code}`);
+          } else {
+            setError(response.error || "Failed to create lobby");
+            setIsCreating(false);
+          }
         }
-      }
-    );
+      );
+    };
+
+    if (socket.connected) {
+      doCreate();
+    } else {
+      socket.once("connect", doCreate);
+    }
   }
 
   return (
@@ -72,11 +75,11 @@ export default function TeacherPage() {
       <div className="max-w-lg w-full relative z-10">
         <div className="text-center mb-10">
           <h1 className="text-3xl font-bold text-text-primary mb-3">
-            Host a Session
+            Teacher Dashboard
           </h1>
           <p className="text-text-secondary leading-relaxed">
-            Create a room for your class. Students will play through 4 fun scenarios
-            (15-20 min) while you watch live stats on a dashboard.
+            Create a results lobby for your class. Students play the quiz on their own,
+            then submit their results using your lobby code.
           </p>
         </div>
 
@@ -100,13 +103,13 @@ export default function TeacherPage() {
           </div>
           <div className="card text-center">
             <div className="text-2xl mb-2">&#x1F4CA;</div>
-            <p className="text-sm font-semibold text-text-primary">Live Dashboard</p>
-            <p className="text-xs text-text-tertiary mt-1">Fun stats for the class</p>
+            <p className="text-sm font-semibold text-text-primary">Results Dashboard</p>
+            <p className="text-xs text-text-tertiary mt-1">See class results in real-time</p>
           </div>
           <div className="card text-center">
             <div className="text-2xl mb-2">&#x1F512;</div>
-            <p className="text-sm font-semibold text-text-primary">Private by Default</p>
-            <p className="text-xs text-text-tertiary mt-1">Students choose to share</p>
+            <p className="text-sm font-semibold text-text-primary">Student Choice</p>
+            <p className="text-xs text-text-tertiary mt-1">Students opt in to share</p>
           </div>
         </div>
 
@@ -117,7 +120,7 @@ export default function TeacherPage() {
             disabled={isCreating}
             className="btn-green px-12 py-4 text-lg"
           >
-            {isCreating ? "Creating..." : "Create Room"}
+            {isCreating ? "Creating..." : "Create Results Lobby"}
           </button>
         </div>
       </div>

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import ConnectionStatus from "@/components/ConnectionStatus";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -22,7 +21,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <body className="bg-surface-primary min-h-screen antialiased">
-        <ConnectionStatus />
         {children}
       </body>
     </html>

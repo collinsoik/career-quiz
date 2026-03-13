@@ -1,84 +1,110 @@
 import { create } from "zustand";
 import type {
-  Room,
-  GamePhase,
-  ClientScenario,
+  Scenario,
+  InterestScores,
   PlayerResults,
-  NormalizedProfile,
-  FeedItem,
-  ClassStats,
 } from "@pathfinder/shared";
+import { SCENARIOS, calculateResults } from "@pathfinder/shared";
 
 interface GameStore {
   // State
-  room: Room | null;
-  playerId: string | null;
-  phase: GamePhase;
-  scenarios: ClientScenario[];
+  playerName: string;
+  scenarios: Scenario[];
   currentScenario: number;
   currentDecision: number;
   completed: boolean;
+  scores: InterestScores;
   results: PlayerResults | null;
-  feedItems: FeedItem[];
-  classStats: ClassStats | null;
+  submitted: boolean;
   error: string | null;
 
   // Actions
-  setRoom: (room: Room) => void;
-  setPlayerId: (playerId: string) => void;
-  hydrateFromSession: () => void;
-  setPhase: (phase: GamePhase) => void;
-  setScenarios: (scenarios: ClientScenario[]) => void;
-  advancePosition: (scenario: number, decision: number, completed: boolean) => void;
-  setResults: (results: PlayerResults) => void;
-  addFeedItem: (item: FeedItem) => void;
-  setClassStats: (stats: ClassStats) => void;
+  setPlayerName: (name: string) => void;
+  advanceAndScore: (choiceWeights: Partial<InterestScores>) => void;
+  calculateResults: () => void;
+  setSubmitted: (submitted: boolean) => void;
   setError: (error: string | null) => void;
   reset: () => void;
 }
 
+const emptyScores: InterestScores = {
+  healthHelping: 0,
+  scienceDiscovery: 0,
+  techComputing: 0,
+  engineeringDesign: 0,
+  buildingMaking: 0,
+  creativeExpression: 0,
+  businessLeadership: 0,
+  justiceCommunity: 0,
+};
+
 const initialState = {
-  room: null as Room | null,
-  playerId: null as string | null,
-  phase: "lobby" as GamePhase,
-  scenarios: [] as ClientScenario[],
+  playerName: "",
+  scenarios: SCENARIOS,
   currentScenario: 0,
   currentDecision: 0,
   completed: false,
+  scores: { ...emptyScores },
   results: null as PlayerResults | null,
-  feedItems: [] as FeedItem[],
-  classStats: null as ClassStats | null,
+  submitted: false,
   error: null as string | null,
 };
 
-export const useGameStore = create<GameStore>((set) => ({
+export const useGameStore = create<GameStore>((set, get) => ({
   ...initialState,
 
-  setRoom: (room) => set({ room, phase: room.phase }),
-  setPlayerId: (playerId) => {
-    if (playerId && typeof window !== "undefined") {
-      sessionStorage.setItem("pathfinder-playerId", playerId);
-    }
-    set({ playerId });
-  },
-  hydrateFromSession: () => {
+  setPlayerName: (playerName) => {
     if (typeof window !== "undefined") {
-      const savedPlayerId = sessionStorage.getItem("pathfinder-playerId");
-      if (savedPlayerId) {
-        set({ playerId: savedPlayerId });
+      sessionStorage.setItem("pathfinder-name", playerName);
+    }
+    set({ playerName });
+  },
+
+  advanceAndScore: (choiceWeights) => {
+    const state = get();
+    // Apply weights to scores
+    const newScores = { ...state.scores };
+    for (const [key, value] of Object.entries(choiceWeights)) {
+      if (value) {
+        newScores[key as keyof InterestScores] += value;
       }
     }
+
+    // Advance position
+    const scenario = state.scenarios[state.currentScenario];
+    const isLastDecision = state.currentDecision >= scenario.decisions.length - 1;
+    const isLastScenario = state.currentScenario >= state.scenarios.length - 1;
+
+    if (isLastDecision && isLastScenario) {
+      // Quiz complete
+      set({
+        scores: newScores,
+        currentDecision: state.currentDecision + 1,
+        completed: true,
+      });
+    } else if (isLastDecision) {
+      // Move to next scenario
+      set({
+        scores: newScores,
+        currentScenario: state.currentScenario + 1,
+        currentDecision: 0,
+      });
+    } else {
+      // Move to next decision in current scenario
+      set({
+        scores: newScores,
+        currentDecision: state.currentDecision + 1,
+      });
+    }
   },
-  setPhase: (phase) => set({ phase }),
-  setScenarios: (scenarios) => set({ scenarios }),
-  advancePosition: (currentScenario, currentDecision, completed) =>
-    set({ currentScenario, currentDecision, completed }),
-  setResults: (results) => set({ results }),
-  addFeedItem: (item) =>
-    set((state) => ({
-      feedItems: [...state.feedItems.slice(-49), item],
-    })),
-  setClassStats: (classStats) => set({ classStats }),
+
+  calculateResults: () => {
+    const state = get();
+    const results = calculateResults(state.scores, state.playerName);
+    set({ results });
+  },
+
+  setSubmitted: (submitted) => set({ submitted }),
   setError: (error) => set({ error }),
-  reset: () => set(initialState),
+  reset: () => set({ ...initialState, scores: { ...emptyScores } }),
 }));

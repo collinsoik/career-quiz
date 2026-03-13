@@ -4,32 +4,20 @@ import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useGameStore } from "@/lib/game-store";
-import { disconnectSocket } from "@/lib/socket";
 
 export default function LandingPage() {
   const router = useRouter();
-  const [roomCode, setRoomCode] = useState("");
   const [playerName, setPlayerName] = useState("");
-  const [isJoining, setIsJoining] = useState(false);
 
   useEffect(() => {
     useGameStore.getState().reset();
-    disconnectSocket();
   }, []);
 
-  function handleRoomCodeChange(value: string) {
-    const cleaned = value.replace(/[^0-9]/g, "");
-    if (cleaned.length <= 4) {
-      setRoomCode(cleaned);
-    }
-  }
-
-  function handleJoin(e: FormEvent) {
+  function handleStart(e: FormEvent) {
     e.preventDefault();
-    if (roomCode.trim().length !== 4 || !playerName.trim()) return;
-    setIsJoining(true);
-    const encodedName = encodeURIComponent(playerName.trim());
-    router.push(`/lobby/${roomCode.trim()}?name=${encodedName}`);
+    if (!playerName.trim()) return;
+    useGameStore.getState().setPlayerName(playerName.trim());
+    router.push("/play");
   }
 
   return (
@@ -48,27 +36,13 @@ export default function LandingPage() {
         </p>
       </div>
 
-      {/* Join Card */}
+      {/* Start Card */}
       <div className="w-full max-w-sm relative z-10">
         <div className="card-elevated">
           <h2 className="text-lg font-semibold text-text-primary mb-6 text-center">
-            Join Session
+            Get Started
           </h2>
-          <form onSubmit={handleJoin} className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-text-secondary block mb-2">
-                Room Code
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={roomCode}
-                onChange={(e) => handleRoomCodeChange(e.target.value)}
-                placeholder="1234"
-                maxLength={4}
-                className="input font-mono tracking-[0.3em] text-center text-xl"
-              />
-            </div>
+          <form onSubmit={handleStart} className="space-y-4">
             <div>
               <label className="text-sm font-medium text-text-secondary block mb-2">
                 Your Name
@@ -80,14 +54,15 @@ export default function LandingPage() {
                 placeholder="Enter your name"
                 maxLength={20}
                 className="input"
+                autoFocus
               />
             </div>
             <button
               type="submit"
-              disabled={roomCode.trim().length !== 4 || !playerName.trim() || isJoining}
+              disabled={!playerName.trim()}
               className="w-full btn-primary py-3 text-base"
             >
-              {isJoining ? "Joining..." : "Join"}
+              Start Quiz
             </button>
           </form>
         </div>
@@ -96,10 +71,10 @@ export default function LandingPage() {
       {/* Footer */}
       <div className="mt-12 text-center relative z-10 space-y-4">
         <Link href="/explore" className="btn-ghost text-sm">
-          Explore STEM Majors →
+          Explore Career Paths →
         </Link>
         <p className="text-xs text-text-disabled">
-          An interactive STEM major exploration game for classrooms
+          An interactive career exploration game for classrooms
         </p>
       </div>
     </main>

@@ -19,7 +19,7 @@ function StudentResults({ students }: StudentResultsProps) {
   return (
     <div className="card-elevated">
       <h2 className="text-sm font-semibold text-text-secondary mb-4 uppercase tracking-wider">
-        Completed Explorers ({students.length})
+        Submitted Results ({students.length})
       </h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -55,7 +55,7 @@ function StudentResults({ students }: StudentResultsProps) {
               </div>
               {student.results && (
                 <div className="mt-3 flex gap-1">
-                  {student.results.topCategories.slice(0, 6).map((cat) => {
+                  {student.results.topCategories.map((cat) => {
                     const info = INTEREST_CATEGORIES.find((c) => c.key === cat.key);
                     return (
                       <div

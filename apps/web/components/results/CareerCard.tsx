@@ -1,6 +1,5 @@
 "use client";
 
-import { INTEREST_CATEGORIES } from "@pathfinder/shared";
 import type { Career } from "@pathfinder/shared";
 
 interface CareerCardProps {
@@ -9,9 +8,6 @@ interface CareerCardProps {
 }
 
 export default function CareerCard({ career, rank }: CareerCardProps) {
-  const primary = INTEREST_CATEGORIES.find((c) => c.key === career.primaryCategory);
-  const secondary = INTEREST_CATEGORIES.find((c) => c.key === career.secondaryCategory);
-
   return (
     <div
       className="card flex items-start gap-4 animate-slide-in-right"
@@ -32,28 +28,15 @@ export default function CareerCard({ career, rank }: CareerCardProps) {
           {career.description}
         </p>
         <div className="flex gap-2 mt-2">
-          {primary && (
-            <span
-              className="text-xs font-medium px-2 py-0.5 rounded-full"
-              style={{
-                backgroundColor: primary.color + "20",
-                color: primary.color,
-              }}
-            >
-              {primary.label}
-            </span>
-          )}
-          {secondary && (
-            <span
-              className="text-xs font-medium px-2 py-0.5 rounded-full"
-              style={{
-                backgroundColor: secondary.color + "20",
-                color: secondary.color,
-              }}
-            >
-              {secondary.label}
-            </span>
-          )}
+          <span
+            className="text-xs font-medium px-2 py-0.5 rounded-full"
+            style={{
+              backgroundColor: career.clusterColor + "20",
+              color: career.clusterColor,
+            }}
+          >
+            {career.clusterName}
+          </span>
         </div>
       </div>
     </div>

@@ -4,68 +4,41 @@
 
 // Client -> Server Events
 export const CLIENT_EVENTS = {
-  ROOM_CREATE: "room:create",
-  ROOM_JOIN: "room:join",
-  ROOM_REJOIN: "room:rejoin",
-  GAME_START: "game:start",
-  CHOICE_SUBMIT: "choice:submit",
-  RESULTS_SHARE: "results:share",
-  SURVEY_SUBMIT: "survey:submit",
+  LOBBY_CREATE: "lobby:create",
+  RESULTS_SUBMIT: "results:submit",
 } as const;
 
 // Server -> Client Events
 export const SERVER_EVENTS = {
-  ROOM_STATE: "room:state",
-  ROOM_PLAYER_JOINED: "room:player-joined",
-  ROOM_PLAYER_LEFT: "room:player-left",
-  ROOM_ERROR: "room:error",
-  GAME_STARTED: "game:started",
-  PLAYER_STATE: "player:state",
-  PLAYER_RESULTS: "player:results",
-  FEED_UPDATE: "feed:update",
-  CLASS_STATS: "class:stats",
-  PLAYER_COMPLETED: "player:completed",
-  GAME_ALL_COMPLETED: "game:all-completed",
+  LOBBY_CREATED: "lobby:created",
+  LOBBY_SUBMISSION: "lobby:submission",
+  LOBBY_STATE: "lobby:state",
+  LOBBY_ERROR: "lobby:error",
 } as const;
 
 // ── Event Payload Types ───────────────────
 
-export interface RoomJoinPayload {
-  roomCode: string;
-  playerName: string;
+export interface ResultsSubmitPayload {
+  lobbyCode: string;
+  displayName: string;
+  profile: import("./types").NormalizedProfile;
+  topCategories: { key: import("./types").InterestCategory; label: string; score: number }[];
+  careers: import("./types").Career[];
+  surveyAnswers?: import("./types").SurveyAnswers | null;
 }
 
-export interface ChoiceSubmitPayload {
-  decisionId: string;
-  choiceId: string;
+export interface LobbyCreatedPayload {
+  code: string;
 }
 
-export interface ResultsSharePayload {
-  share: boolean;
+export interface LobbySubmissionPayload {
+  submission: import("./types").SubmittedResult;
 }
 
-export interface SurveySubmitPayload {
-  enjoyment: number | null;
-  learned: string | null;
-  wouldExplore: string | null;
-  overall: number | null;
+export interface LobbyStatePayload {
+  lobby: import("./types").ResultsLobby;
 }
 
-// Server payloads
-export interface RoomPlayerJoinedPayload {
-  player: {
-    id: string;
-    displayName: string;
-  };
-}
-
-export interface RoomErrorPayload {
+export interface LobbyErrorPayload {
   message: string;
-  code?: string;
-}
-
-export interface PlayerStatePayload {
-  currentScenario: number;
-  currentDecision: number;
-  completed: boolean;
 }

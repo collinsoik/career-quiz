@@ -1,10 +1,8 @@
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import { handleRoomEvents, rooms } from "./rooms";
-import { handleGameEvents, gameStates } from "./game";
+import { handleLobbyEvents } from "./lobby";
 import { initDb, flushDb } from "./db";
-import { recoverGameState, flushGameState } from "./state-recovery";
 
 const app = express();
 const httpServer = createServer(app);
@@ -34,7 +32,6 @@ process.on("unhandledRejection", (reason) => {
 process.on("uncaughtException", (err) => {
   console.error("Uncaught exception:", err);
   flushDb();
-  flushGameState(rooms, gameStates);
   process.exit(1);
 });
 
@@ -47,8 +44,7 @@ app.get("/health", (_req, res) => {
 io.on("connection", (socket) => {
   console.log(`Client connected: ${socket.id}`);
 
-  handleRoomEvents(io, socket);
-  handleGameEvents(io, socket);
+  handleLobbyEvents(io, socket);
 
   socket.on("disconnect", () => {
     console.log(`Client disconnected: ${socket.id}`);
@@ -60,18 +56,6 @@ const PORT = process.env.PORT || 3001;
 async function start() {
   await initDb();
 
-  // Recover game state from a previous crash if available
-  const recovered = recoverGameState();
-  if (recovered) {
-    console.log(`Recovering ${Object.keys(recovered.rooms).length} rooms from crash`);
-    for (const [code, room] of Object.entries(recovered.rooms)) {
-      rooms.set(code, room as any);
-    }
-    for (const [code, state] of Object.entries(recovered.gameStates)) {
-      gameStates.set(code, state as any);
-    }
-  }
-
   httpServer.listen(PORT, () => {
     console.log(`Pathfinder game server running on port ${PORT}`);
   });
@@ -82,8 +66,8 @@ start().catch((err) => {
   process.exit(1);
 });
 
-// Flush pending DB writes and game state on shutdown
-process.on("SIGINT", () => { flushDb(); flushGameState(rooms, gameStates); process.exit(0); });
-process.on("SIGTERM", () => { flushDb(); flushGameState(rooms, gameStates); process.exit(0); });
+// Flush pending DB writes on shutdown
+process.on("SIGINT", () => { flushDb(); process.exit(0); });
+process.on("SIGTERM", () => { flushDb(); process.exit(0); });
 
 export { io };

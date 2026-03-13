@@ -1,9 +1,9 @@
 "use client";
 
-import type { ClientScenario } from "@pathfinder/shared";
+import type { Scenario } from "@pathfinder/shared";
 
 interface ScenarioIntroProps {
-  scenario: ClientScenario;
+  scenario: Scenario;
   scenarioNumber: number;
   totalScenarios: number;
   onContinue: () => void;
